@@ -8,6 +8,7 @@ from apps.api.core.config import get_settings
 from apps.api.core.logging import setup_logging
 from apps.api.routers import admin, chat, notices
 from apps.api.services.indexing.qdrant_client import ensure_collection
+from apps.api.services.retrieval.embeddings import get_embedding_service
 
 settings = get_settings()
 setup_logging(settings.log_level)
@@ -23,6 +24,15 @@ def on_startup() -> None:
         ensure_collection()
     except Exception as exc:
         logger.warning("Qdrant init failed at startup: %s", exc)
+
+    if settings.preload_local_embedding_on_startup:
+        try:
+            embedder = get_embedding_service()
+            if embedder.backend == "local":
+                embedder.embed_query("suisse bid match startup warmup")
+                logger.info("Local embedding model warmed up")
+        except Exception as exc:
+            logger.warning("Embedding warmup failed at startup: %s", exc)
 
 
 @app.get("/health")

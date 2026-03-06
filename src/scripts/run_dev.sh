@@ -17,9 +17,16 @@ echo "Starting API on http://localhost:8000"
 uvicorn apps.api.main:app --reload &
 API_PID=$!
 
-sleep 2
+cleanup() {
+  kill "$API_PID" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT INT TERM
 
-echo "Starting Streamlit on http://localhost:8501"
-streamlit run apps/ui/streamlit_app.py
+echo "Starting Next.js UI on http://localhost:3000"
+cd apps/web
+if [ ! -d node_modules ]; then
+  npm install
+fi
+npm run dev
 
-kill $API_PID
+kill "$API_PID" >/dev/null 2>&1 || true

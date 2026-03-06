@@ -37,15 +37,34 @@ def _extract_by_keywords(sentences: Iterable[str], keywords: list[str], limit: i
     return out
 
 
+def _supports_temperature(model: str) -> bool:
+    return not str(model or "").lower().startswith("gpt-5")
+
+
+def _chat_completion_with_compat(client, *, model: str, messages: list[dict[str, str]], temperature: float | None = None):
+    kwargs: dict[str, object] = {"model": model, "messages": messages}
+    if temperature is not None and _supports_temperature(model):
+        kwargs["temperature"] = temperature
+
+    try:
+        return client.chat.completions.create(**kwargs)
+    except Exception as exc:
+        if "temperature" in kwargs and "temperature" in str(exc).lower() and "unsupported" in str(exc).lower():
+            kwargs.pop("temperature", None)
+            return client.chat.completions.create(**kwargs)
+        raise
+
+
 def _llm_refine(structured: ChecklistStructured, summary: str) -> tuple[ChecklistStructured, str]:
     settings = get_settings()
-    if not settings.openai_api_key:
+    chat_api_key = settings.resolved_openai_chat_api_key
+    if not chat_api_key:
         return structured, summary
 
     try:
         from openai import OpenAI
 
-        client = OpenAI(api_key=settings.openai_api_key)
+        client = OpenAI(api_key=chat_api_key)
         payload = {
             "eligibility": structured.eligibility,
             "required_documents": structured.required_documents,
@@ -58,7 +77,8 @@ def _llm_refine(structured: ChecklistStructured, summary: str) -> tuple[Checklis
             "Keep it factual, avoid inventing missing values, and return concise bullet-style strings.\n\n"
             f"Input JSON:\n{payload}\n\nDraft summary:\n{summary}"
         )
-        resp = client.chat.completions.create(
+        resp = _chat_completion_with_compat(
+            client,
             model=settings.openai_chat_model,
             messages=[
                 {"role": "system", "content": "Output plain text only."},

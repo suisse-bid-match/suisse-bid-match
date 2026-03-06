@@ -19,13 +19,17 @@ class Settings(BaseSettings):
     qdrant_timeout: int = 30
     qdrant_recreate_collection: bool = False
 
-    embedding_backend: str = "auto"  # auto|openai|local
+    embedding_backend: str = "local"  # auto|openai|local
     openai_api_key: str | None = None
+    openai_chat_api_key: str | None = None
+    openai_embedding_api_key: str | None = None
     openai_embedding_model: str = "text-embedding-3-small"
     local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    openai_chat_model: str = "gpt-4o-mini"
+    openai_chat_model: str = "gpt-5-mini"
+    llm_matching_enabled: bool = True
+    llm_match_pool_size: int = Field(default=12, ge=3, le=30)
 
-    simap_base_url: str = "https://int.simap.ch"
+    simap_base_url: str = "https://www.simap.ch"
     simap_token: str | None = None
     simap_timeout_seconds: int = 20
     simap_rps: float = 1.0
@@ -38,8 +42,10 @@ class Settings(BaseSettings):
     bm25_weight: float = Field(default=0.3, ge=0.0, le=1.0)
     default_top_k: int = Field(default=8, ge=1, le=20)
     dense_candidates: int = Field(default=30, ge=5, le=200)
+    chat_max_retrieval_rounds: int = Field(default=1, ge=1, le=3)
 
     enable_debug_chat: bool = True
+    preload_local_embedding_on_startup: bool = True
 
     @field_validator("db_url")
     @classmethod
@@ -51,6 +57,14 @@ class Settings(BaseSettings):
             if not value.startswith(valid_prefix):
                 raise ValueError("DB_URL must be PostgreSQL when DB_REQUIRE_POSTGRES=true")
         return value
+
+    @property
+    def resolved_openai_chat_api_key(self) -> str | None:
+        return self.openai_chat_api_key or self.openai_api_key
+
+    @property
+    def resolved_openai_embedding_api_key(self) -> str | None:
+        return self.openai_embedding_api_key or self.openai_api_key
 
 
 @lru_cache

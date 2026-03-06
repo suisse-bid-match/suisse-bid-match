@@ -22,7 +22,6 @@ def ingest_simap(payload: IngestSimapRequest, db: Session = Depends(get_db_sessi
         db,
         updated_since=payload.updated_since,
         limit=payload.limit,
-        language=payload.language,
     )
     logger.info("SIMAP ingest finished: %s", result)
     return IngestResponse(**result)

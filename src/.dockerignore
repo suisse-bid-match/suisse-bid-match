@@ -10,9 +10,7 @@ __pycache__
 .env
 
 # runtime/output data
-data/qdrant
-data/docs
-data/*.db
+data/
 
 # misc
 .DS_Store

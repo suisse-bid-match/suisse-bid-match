@@ -55,4 +55,4 @@ docker compose up -d --build
 
 Then open:
 - API docs: `http://localhost:8000/docs`
-- UI: `http://localhost:8501`
+- UI: `http://localhost:3000`

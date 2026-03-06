@@ -26,7 +26,6 @@ def main() -> None:
             db,
             updated_since=datetime.now(timezone.utc) - timedelta(days=30),
             limit=30,
-            language="en",
         )
 
     print("Seed result:")

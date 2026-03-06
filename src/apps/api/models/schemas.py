@@ -27,6 +27,21 @@ class ChatRequest(BaseModel):
     debug: bool = False
 
 
+class MatchScoreBreakdown(BaseModel):
+    dense_score: float
+    bm25_score: float
+    final_score: float
+
+
+class MatchEvidence(BaseModel):
+    matched_terms: list[str] = Field(default_factory=list)
+    matched_sentences: list[str] = Field(default_factory=list)
+    score_breakdown: MatchScoreBreakdown
+    llm_reason: str | None = None
+    matching_points: list[str] = Field(default_factory=list)
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+
+
 class Citation(BaseModel):
     title: str | None = None
     url: str | None = None
@@ -34,6 +49,7 @@ class Citation(BaseModel):
     snippet: str
     score: float
     notice_id: str
+    match_evidence: MatchEvidence | None = None
 
 
 class ChatDebug(BaseModel):
@@ -54,7 +70,6 @@ class ChatResponse(BaseModel):
 class IngestSimapRequest(BaseModel):
     updated_since: datetime | None = None
     limit: int = Field(default=50, ge=1, le=200)
-    language: str = "en"
 
 
 class IngestResponse(BaseModel):

@@ -41,7 +41,6 @@ def ingest_simap_publications(
     db: Session,
     updated_since: datetime | None = None,
     limit: int = 50,
-    language: str = "en",
 ) -> dict[str, int]:
     start = time.perf_counter()
     connector = SimapApiConnector()
@@ -51,7 +50,6 @@ def ingest_simap_publications(
     publications = connector.list_publications(
         updated_since=updated_since.isoformat(),
         limit=limit,
-        language=language,
     )
 
     upserted = 0
@@ -72,7 +70,6 @@ def ingest_simap_publications(
             detail = connector.get_publication(
                 publication_id=publication_id,
                 project_id=project_id,
-                language=language,
             )
             if detail:
                 normalized = connector.normalize_publication(detail)

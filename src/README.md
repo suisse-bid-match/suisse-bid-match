@@ -11,7 +11,7 @@ Bidder-side copilot MVP for:
 - DB: PostgreSQL (only)
 - Migrations: Alembic
 - Vector DB: Qdrant
-- UI: Streamlit
+- UI: Next.js (TypeScript + Tailwind CSS)
 
 ## Scope notes
 - Implemented: SIMAP connector + ingest + reindex + chat + checklist + changes
@@ -24,6 +24,8 @@ Bidder-side copilot MVP for:
 ```bash
 cp .env.example .env
 ```
+`DB_URL` in `.env` is for host/local runs. Docker Compose API uses
+`DB_URL_DOCKER` (defaulting to `postgresql+psycopg://suisse:suisse@postgres:5432/suisse_bid_match`).
 
 ### 2) Start all services
 ```bash
@@ -45,7 +47,7 @@ docker compose exec api python3 scripts/reindex.py
 
 ### 5) Open
 - API docs: `http://localhost:8000/docs`
-- UI: `http://localhost:8501`
+- UI: `http://localhost:3000`
 
 ## Local run (without dockerized API/UI)
 
@@ -63,6 +65,11 @@ alembic upgrade head
 
 # start app
 uvicorn apps.api.main:app --reload
+
+# in another terminal, start web ui
+cd apps/web
+npm install
+npm run dev
 ```
 
 ## Database and migrations
@@ -72,10 +79,19 @@ uvicorn apps.api.main:app --reload
 
 ## Key env vars
 - `DB_URL=postgresql+psycopg://...`
+- `DB_URL_DOCKER=postgresql+psycopg://...@postgres:5432/...` (optional compose override)
 - `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`
 - `QDRANT_URL`
+- `EMBEDDING_BACKEND=local` (default; use local model for vectors)
+- `OPENAI_CHAT_API_KEY` (recommended for chat/checklist LLM answers)
+- `OPENAI_EMBEDDING_API_KEY` (only needed when `EMBEDDING_BACKEND=openai`)
+- `OPENAI_API_KEY` (legacy fallback for both chat and embeddings)
 - `SIMAP_PUBLICATIONS_PATH=/api/publications/v2/project/project-search`
 - `SIMAP_PUBLICATION_DETAIL_PATH=/api/publications/v1/project/{projectId}/publication-details/{publicationId}`
+
+Recommended low-cost setup:
+- `EMBEDDING_BACKEND=local`
+- `OPENAI_CHAT_API_KEY=...`
 
 ## Useful commands
 ```bash

@@ -23,7 +23,7 @@ class EmbeddingService:
             return "openai"
         if backend == "local":
             return "local"
-        if self.settings.openai_api_key:
+        if self.settings.resolved_openai_embedding_api_key:
             return "openai"
         return "local"
 
@@ -37,7 +37,7 @@ class EmbeddingService:
         if self._openai_client is None:
             from openai import OpenAI
 
-            self._openai_client = OpenAI(api_key=self.settings.openai_api_key)
+            self._openai_client = OpenAI(api_key=self.settings.resolved_openai_embedding_api_key)
         return self._openai_client
 
     def _get_local_model(self):

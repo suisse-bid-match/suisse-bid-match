@@ -13,10 +13,10 @@ pypdf==5.1.0
 pdfminer.six==20231228
 beautifulsoup4==4.12.3
 readability-lxml==0.8.1
+lxml_html_clean
 rank-bm25==0.2.2
 sentence-transformers==3.3.1
 openai==1.58.1
-streamlit==1.41.1
 requests==2.32.3
 python-dateutil==2.9.0.post0
 orjson==3.10.12

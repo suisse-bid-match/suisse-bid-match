@@ -42,17 +42,21 @@ services:
       APP_ENV: ${APP_ENV:-dev}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       DB_REQUIRE_POSTGRES: ${DB_REQUIRE_POSTGRES:-true}
-      DB_URL: ${DB_URL:-postgresql+psycopg://suisse:suisse@postgres:5432/suisse_bid_match}
+      DB_URL: ${DB_URL_DOCKER:-postgresql+psycopg://suisse:suisse@postgres:5432/suisse_bid_match}
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-tender_chunks}
       QDRANT_TIMEOUT: ${QDRANT_TIMEOUT:-30}
       QDRANT_RECREATE_COLLECTION: ${QDRANT_RECREATE_COLLECTION:-false}
-      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-auto}
+      EMBEDDING_BACKEND: ${EMBEDDING_BACKEND:-local}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_CHAT_API_KEY: ${OPENAI_CHAT_API_KEY:-}
+      OPENAI_EMBEDDING_API_KEY: ${OPENAI_EMBEDDING_API_KEY:-}
       OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
       LOCAL_EMBEDDING_MODEL: ${LOCAL_EMBEDDING_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
-      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-4o-mini}
-      SIMAP_BASE_URL: ${SIMAP_BASE_URL:-https://int.simap.ch}
+      OPENAI_CHAT_MODEL: ${OPENAI_CHAT_MODEL:-gpt-5-mini}
+      LLM_MATCHING_ENABLED: ${LLM_MATCHING_ENABLED:-true}
+      LLM_MATCH_POOL_SIZE: ${LLM_MATCH_POOL_SIZE:-12}
+      SIMAP_BASE_URL: ${SIMAP_BASE_URL:-https://www.simap.ch}
       SIMAP_TOKEN: ${SIMAP_TOKEN:-}
       SIMAP_TIMEOUT_SECONDS: ${SIMAP_TIMEOUT_SECONDS:-20}
       SIMAP_RPS: ${SIMAP_RPS:-1.0}
@@ -63,7 +67,12 @@ services:
       BM25_WEIGHT: ${BM25_WEIGHT:-0.3}
       DEFAULT_TOP_K: ${DEFAULT_TOP_K:-8}
       DENSE_CANDIDATES: ${DENSE_CANDIDATES:-30}
+      CHAT_MAX_RETRIEVAL_ROUNDS: ${CHAT_MAX_RETRIEVAL_ROUNDS:-1}
       ENABLE_DEBUG_CHAT: ${ENABLE_DEBUG_CHAT:-true}
+      PRELOAD_LOCAL_EMBEDDING_ON_STARTUP: ${PRELOAD_LOCAL_EMBEDDING_ON_STARTUP:-true}
+      HF_HOME: /app/data/huggingface
+      SENTENCE_TRANSFORMERS_HOME: /app/data/huggingface/sentence_transformers
+      TORCH_HOME: /app/data/torch
     volumes:
       - ./:/app
       - ./data:/app/data
@@ -75,24 +84,15 @@ services:
   ui:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: apps/web/Dockerfile
     container_name: suisse-bid-match-ui
     depends_on:
       - api
     environment:
-      API_BASE_URL: http://api:8000
+      API_INTERNAL_BASE_URL: ${API_INTERNAL_BASE_URL:-http://api:8000}
     volumes:
-      - ./:/app
+      - ./apps/web:/app/apps/web
+      - /app/apps/web/node_modules
     ports:
-      - "8501:8501"
-    command:
-      [
-        "streamlit",
-        "run",
-        "apps/ui/streamlit_app.py",
-        "--server.port",
-        "8501",
-        "--server.address",
-        "0.0.0.0"
-      ]
+      - "3000:3000"
     restart: unless-stopped
