@@ -44,6 +44,28 @@ Turn your internal **product specs, capabilities, and business rules** into:
 - Change impact analysis
 - Postgres-only persistence + Alembic migrations
 
+## How does it help Tender Procedure
+
+```mermaid
+flowchart LR
+    A[Opportunity discovery]
+    B[Qualification decision]
+    C[Bid drafting]
+    D[Submission control]
+    E[Award follow-up]
+    F[Delivery support]
+
+    A --> B --> C --> D --> E --> F
+
+    A1[AI: match SIMAP notices<br/>to company profile] --> A
+    B1[AI: extract requirements,<br/>score fit, flag risks] --> B
+    C1[AI: draft prequalification file,<br/>cover letter, technical response,<br/>compliance matrix] --> C
+    D1[AI: checklist, missing docs,<br/>deadline reminders] --> D
+    E1[AI: summarize award notice,<br/>appeal/debrief support] --> E
+    F1[AI: extract obligations,<br/>milestones, reporting tasks] --> F
+```
+
+
 ## Run it
 Implementation lives in `src/`.
 
