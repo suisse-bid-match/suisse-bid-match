@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SwissTender Copilot MVP</title>
+  <style>
+    body { font-family: sans-serif; margin: 24px; max-width: 1200px; }
+    section { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+    h1 { margin-top: 0; }
+    textarea { width: 100%; min-height: 220px; font-family: monospace; }
+    pre { background: #f6f8fa; padding: 12px; overflow: auto; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .warn { color: #b36b00; }
+    .block { color: #9f1239; font-weight: bold; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid #ddd; padding: 6px; text-align: left; vertical-align: top; }
+    th { background: #f3f4f6; }
+    .muted { color: #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>SwissTender Copilot MVP (Uster)</h1>
+
+  <section>
+    <h2>1) Ingest package</h2>
+    <div class="row">
+      <input id="uploadFiles" type="file" multiple />
+      <button onclick="ingestByUpload()">Ingest upload</button>
+      <span class="muted">Recommend: upload one Uster zip package.</span>
+    </div>
+    <p id="ingestResult" class="muted"></p>
+  </section>
+
+  <section>
+    <h2>2) Profile (editable JSON)</h2>
+    <div class="row">
+      <button onclick="loadProfile()">Load profile</button>
+      <button onclick="saveProfile()">Save profile</button>
+    </div>
+    <textarea id="profileJson"></textarea>
+    <p id="profileStatus" class="muted"></p>
+  </section>
+
+  <section>
+    <h2>3) Package fields</h2>
+    <div class="row">
+      <button onclick="loadFields()">Load fields</button>
+    </div>
+    <p id="fieldSummary" class="muted"></p>
+    <div id="fieldsTable"></div>
+    <h3>PDF insight</h3>
+    <pre id="pdfInsight"></pre>
+  </section>
+
+<script>
+let currentPackageId = "";
+
+async function ingestByUpload() {
+  const picker = document.getElementById("uploadFiles");
+  const files = picker.files;
+  if (!files || files.length === 0) {
+    document.getElementById("ingestResult").textContent = "Pick at least one file to upload.";
+    return;
+  }
+  const form = new FormData();
+  for (const file of files) {
+    form.append("files", file);
+  }
+  const resp = await fetch("/api/packages/ingest", { method: "POST", body: form });
+  const json = await resp.json();
+  if (!resp.ok) {
+    document.getElementById("ingestResult").textContent = JSON.stringify(json);
+    return;
+  }
+  currentPackageId = json.package_id;
+  document.getElementById("ingestResult").textContent = `package_id=${json.package_id}, docs=${json.document_count}, fields=${json.field_count}`;
+}
+
+async function loadProfile() {
+  const resp = await fetch("/api/profile");
+  const json = await resp.json();
+  document.getElementById("profileJson").value = JSON.stringify(json, null, 2);
+  document.getElementById("profileStatus").textContent = "profile loaded";
+}
+
+async function saveProfile() {
+  const text = document.getElementById("profileJson").value;
+  let payload;
+  try {
+    payload = JSON.parse(text);
+  } catch (e) {
+    document.getElementById("profileStatus").textContent = "invalid JSON";
+    return;
+  }
+  const resp = await fetch("/api/profile", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const json = await resp.json();
+  document.getElementById("profileStatus").textContent = resp.ok ? "profile saved" : JSON.stringify(json);
+}
+
+async function loadFields() {
+  if (!currentPackageId) {
+    document.getElementById("fieldSummary").textContent = "Ingest package first.";
+    return;
+  }
+  const resp = await fetch(`/api/packages/${currentPackageId}/fields`);
+  const json = await resp.json();
+  if (!resp.ok) {
+    document.getElementById("fieldSummary").textContent = JSON.stringify(json);
+    return;
+  }
+  document.getElementById("fieldSummary").textContent = `docs=${json.documents.length}, fields=${json.fields.length}`;
+  const rows = json.fields.map(f => `<tr>
+      <td>${f.field_id}</td>
+      <td>${f.label}</td>
+      <td>${f.semantic_key}</td>
+      <td>${f.location}</td>
+      <td>${f.critical}</td>
+    </tr>`).join("");
+  document.getElementById("fieldsTable").innerHTML = `<table><thead><tr><th>Field ID</th><th>Label</th><th>Semantic Key</th><th>Location</th><th>Critical</th></tr></thead><tbody>${rows}</tbody></table>`;
+  document.getElementById("pdfInsight").textContent = JSON.stringify(json.pdf_insight, null, 2);
+}
+
+loadProfile();
+</script>
+</body>
+</html>

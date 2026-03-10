@@ -1,0 +1,86 @@
+{
+  "company": {
+    "name": "LuminaTech Schweiz AG",
+    "legal_form": "AG",
+    "uid_vat": "CHE-123.456.789 MWST",
+    "address_line": "Technoparkstrasse 1",
+    "postal_code": "8005",
+    "city": "Zuerich",
+    "country": "CH",
+    "website": "https://luminatech.example"
+  },
+  "contacts": {
+    "primary_name": "Max Muster",
+    "primary_phone": "+41 44 123 45 67",
+    "primary_email": "tender@luminatech.example"
+  },
+  "certifications": [
+    "ISO 9001",
+    "ISO 14001",
+    "SUD Workplace Compliance"
+  ],
+  "references": [
+    {
+      "project_name": "Schulhaus Nord LED Retrofit",
+      "client": "Gemeinde Winterthur",
+      "city": "Winterthur",
+      "year": 2023,
+      "amount_chf": 420000,
+      "contact_person": "Anna Keller",
+      "contact_phone": "+41 52 222 11 00"
+    },
+    {
+      "project_name": "Campus West Lighting Renewal",
+      "client": "Stadt Aarau",
+      "city": "Aarau",
+      "year": 2022,
+      "amount_chf": 360000,
+      "contact_person": "Peter Graf",
+      "contact_phone": "+41 62 111 22 33"
+    },
+    {
+      "project_name": "Turnhalle Ost Leuchten Ersatz",
+      "client": "Primarschule Uster",
+      "city": "Uster",
+      "year": 2021,
+      "amount_chf": 280000,
+      "contact_person": "Nora Blum",
+      "contact_phone": "+41 44 555 88 99"
+    }
+  ],
+  "commercial_defaults": {
+    "discount_percent": 2.0,
+    "skonto_percent": 1.0,
+    "general_deduction_percent": 1.5,
+    "vat_percent": 8.1,
+    "currency": "CHF"
+  },
+  "product_catalog": [
+    {
+      "product_key": "leuchte_1_1_system",
+      "name": "LT-Panel DALI 600x600",
+      "unit_price_chf": 189.0,
+      "specs": {
+        "lumen": 4200,
+        "ugr": 19,
+        "ik": "IK07",
+        "life_l80b50_h": 70000,
+        "cct_kelvin": 4000,
+        "macadam_sdcm": 3
+      }
+    },
+    {
+      "product_key": "leuchte_1_2_downlight",
+      "name": "LT-Downlight 180 DALI",
+      "unit_price_chf": 129.0,
+      "specs": {
+        "lumen": 2400,
+        "ugr": 19,
+        "ik": "IK06",
+        "life_l80b50_h": 70000,
+        "cct_kelvin": 4000,
+        "macadam_sdcm": 3
+      }
+    }
+  ]
+}

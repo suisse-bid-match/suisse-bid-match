@@ -1,0 +1,124 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-5.4}
+      - OPENAI_TIMEOUT_SEC=${OPENAI_TIMEOUT_SEC:-25}
+      - OPENAI_MAX_RETRIES=${OPENAI_MAX_RETRIES:-1}
+      - OPENAI_WEB_SEARCH_ENABLED=${OPENAI_WEB_SEARCH_ENABLED:-true}
+      - OPENAI_WEB_SEARCH_EXTERNAL=${OPENAI_WEB_SEARCH_EXTERNAL:-true}
+      - OPENAI_WEB_SEARCH_TOOL_CHOICE=${OPENAI_WEB_SEARCH_TOOL_CHOICE:-auto}
+      - OPENAI_FIELD_UNDERSTANDING_MODEL=${OPENAI_FIELD_UNDERSTANDING_MODEL:-}
+      - FIELD_UNDERSTANDING_AUTO_THRESHOLD=${FIELD_UNDERSTANDING_AUTO_THRESHOLD:-0.75}
+      - FIELD_UNDERSTANDING_REVIEW_THRESHOLD=${FIELD_UNDERSTANDING_REVIEW_THRESHOLD:-0.55}
+      - FIELD_UNDERSTANDING_MIN_ANCHOR_CONFIDENCE=${FIELD_UNDERSTANDING_MIN_ANCHOR_CONFIDENCE:-0.6}
+      - FIELD_UNDERSTANDING_MAX_ANCHORS=${FIELD_UNDERSTANDING_MAX_ANCHORS:-120}
+      - DATABASE_URL=postgresql+psycopg2://suisse:suisse@postgres:5432/suissebid
+      - DOCLING_URL=http://docling:8020
+      - DOCLING_TIMEOUT_SEC=300
+      - DOCLING_CONNECT_TIMEOUT_SEC=5
+      - DOCLING_FULL_XLSX_MAX_LINES=${DOCLING_FULL_XLSX_MAX_LINES:-50000}
+      - DOCLING_RESPONSE_FORMAT=${DOCLING_RESPONSE_FORMAT:-plaintext}
+      - DOCLING_PDF_SPLIT_ENABLED=${DOCLING_PDF_SPLIT_ENABLED:-true}
+      - DOCLING_PDF_CHUNK_PAGES=${DOCLING_PDF_CHUNK_PAGES:-6}
+      - DOCLING_PDF_MAX_CHUNKS=${DOCLING_PDF_MAX_CHUNKS:-6}
+      - MATCH_DEFAULT_DOMAIN=${MATCH_DEFAULT_DOMAIN:-lighting}
+      - MATCH_DEFAULT_TOP_K=${MATCH_DEFAULT_TOP_K:-5}
+      - MATCH_QUERY_TIMEOUT_SEC=${MATCH_QUERY_TIMEOUT_SEC:-15}
+      - MATCH_EXTRACT_MAX_CHARS=${MATCH_EXTRACT_MAX_CHARS:-0}
+      - MATCH_EXTRACT_MAX_OUTPUT_TOKENS=${MATCH_EXTRACT_MAX_OUTPUT_TOKENS:-9000}
+      - MATCH_LLM_TIMEOUT_SEC=${MATCH_LLM_TIMEOUT_SEC:-240}
+      - MATCH_LLM_CONFIDENCE_THRESHOLD=${MATCH_LLM_CONFIDENCE_THRESHOLD:-0.75}
+      - MATCH_HARD_MIN_CONFIDENCE=${MATCH_HARD_MIN_CONFIDENCE:-0.60}
+      - MATCH_MAPPING_MODE=${MATCH_MAPPING_MODE:-hybrid}
+      - MATCH_MAPPER_MODEL=${MATCH_MAPPER_MODEL:-}
+      - PIM_DATABASE_URL=${PIM_DATABASE_URL:-mysql+pymysql://pim_reader:pim_reader@pim-mysql:3306/pim_raw}
+      - PIM_ASSETS_ROOT=${PIM_ASSETS_ROOT:-/pim-assets}
+      - STORAGE_BACKEND=s3
+      - S3_ENDPOINT_URL=http://minio:9000
+      - S3_ACCESS_KEY_ID=minioadmin
+      - S3_SECRET_ACCESS_KEY=minioadmin
+      - S3_REGION=us-east-1
+      - S3_BUCKET=suisse-bid-match
+    volumes:
+      - ./:/app
+      - ../pim/opt/LO/LOwebserver:/pim-assets:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      pim-mysql:
+        condition: service_healthy
+      minio:
+        condition: service_started
+      docling:
+        condition: service_started
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=http://localhost:8000
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+      - frontend_next_cache:/app/.next
+    depends_on:
+      app:
+        condition: service_started
+
+  docling:
+    build: ./docling
+    expose:
+      - "8020"
+
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_DB=suissebid
+      - POSTGRES_USER=suisse
+      - POSTGRES_PASSWORD=suisse
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U suisse -d suissebid"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  pim-mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_DATABASE=pim_raw
+      - MYSQL_ROOT_PASSWORD=root
+    volumes:
+      - pim_mysql_data:/var/lib/mysql
+      - ./docker/mysql-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -proot"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+volumes:
+  postgres_data:
+  pim_mysql_data:
+  minio_data:
+  frontend_node_modules:
+  frontend_next_cache:

@@ -1,0 +1,452 @@
+{
+  "domain": "lighting",
+  "table_whitelist": [
+    "match_products",
+    "match_specs",
+    "match_certs",
+    "match_assets"
+  ],
+  "field_whitelist": [
+    "match_products.product_id",
+    "match_products.product_name",
+    "match_products.article_number",
+    "match_products.manufacturer_name",
+    "match_products.retailer_name",
+    "match_products.light_category_de",
+    "match_products.light_family_de",
+    "match_specs.product_id",
+    "match_specs.electrical_power_w",
+    "match_specs.lumen_output_max",
+    "match_specs.ip_rating",
+    "match_specs.ik_rating",
+    "match_specs.ugr",
+    "match_specs.cri",
+    "match_specs.color_temp_k_max",
+    "match_specs.controls_dali",
+    "match_specs.controls_bluetooth",
+    "match_specs.controls_matter",
+    "match_specs.emergency_light",
+    "match_specs.runtime_hours",
+    "match_certs.product_id",
+    "match_certs.ce",
+    "match_certs.enec",
+    "match_certs.icon_tags",
+    "match_assets.product_id",
+    "match_assets.datasheet_path",
+    "match_assets.datasheet_url",
+    "match_assets.mounting_instruction_path",
+    "match_assets.image_path",
+    "match_assets.asset_languages"
+  ],
+  "sql_template": "SELECT p.product_id AS product_id, p.product_name AS product_name, p.article_number, p.manufacturer_name, p.retailer_name, p.light_category_de, p.light_family_de, s.electrical_power_w, s.lumen_output_max, s.ip_rating, s.ik_rating, s.ugr, s.cri, s.color_temp_k_max, s.controls_dali, s.controls_bluetooth, s.controls_matter, s.emergency_light, s.runtime_hours, c.ce, c.enec, c.icon_tags, a.datasheet_path, a.datasheet_url, a.mounting_instruction_path, a.image_path, a.asset_languages FROM match_products p LEFT JOIN match_specs s ON s.product_id = p.product_id LEFT JOIN match_certs c ON c.product_id = p.product_id LEFT JOIN match_assets a ON a.product_id = p.product_id WHERE 1=1 {hard_filters} LIMIT :limit",
+  "mappings": [
+    {
+      "canonical_key": "power_w",
+      "synonyms": [
+        "power",
+        "power rating",
+        "watt",
+        "wattage",
+        "功率",
+        "leistung"
+      ],
+      "field": "match_specs.electrical_power_w",
+      "field_expr": "s.electrical_power_w",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": "w",
+      "min_value": 0.0,
+      "max_value": 200000.0,
+      "hard_default": true,
+      "weight": 1.0
+    },
+    {
+      "canonical_key": "lumen",
+      "synonyms": [
+        "lumen",
+        "lumens",
+        "luminous flux",
+        "流明",
+        "lichtstrom"
+      ],
+      "field": "match_specs.lumen_output_max",
+      "field_expr": "s.lumen_output_max",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": "lm",
+      "min_value": 0.0,
+      "max_value": 500000.0,
+      "hard_default": true,
+      "weight": 1.0
+    },
+    {
+      "canonical_key": "ip_grade",
+      "synonyms": [
+        "ip",
+        "ip rating",
+        "ip grade",
+        "防护等级",
+        "schutzart"
+      ],
+      "field": "match_specs.ip_rating",
+      "field_expr": "s.ip_rating",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": null,
+      "min_value": 0.0,
+      "max_value": 99.0,
+      "hard_default": true,
+      "weight": 1.0
+    },
+    {
+      "canonical_key": "ik_grade",
+      "synonyms": [
+        "ik",
+        "ik rating",
+        "ik grade",
+        "抗冲击",
+        "stossfestigkeit"
+      ],
+      "field": "match_specs.ik_rating",
+      "field_expr": "s.ik_rating",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": null,
+      "min_value": 0.0,
+      "max_value": 20.0,
+      "hard_default": true,
+      "weight": 1.0
+    },
+    {
+      "canonical_key": "ce",
+      "synonyms": [
+        "ce",
+        "ce certified",
+        "ce certification",
+        "ce认证",
+        "ce zertifiziert"
+      ],
+      "field": "match_certs.ce",
+      "field_expr": "c.ce",
+      "operators": [
+        "bool_true",
+        "bool_false",
+        "eq"
+      ],
+      "value_type": "boolean",
+      "unit": null,
+      "hard_default": true,
+      "weight": 1.0
+    },
+    {
+      "canonical_key": "ugr",
+      "synonyms": [
+        "ugr",
+        "blendung",
+        "眩光"
+      ],
+      "field": "match_specs.ugr",
+      "field_expr": "s.ugr",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": null,
+      "min_value": 0.0,
+      "max_value": 40.0,
+      "hard_default": false,
+      "weight": 0.45
+    },
+    {
+      "canonical_key": "cri",
+      "synonyms": [
+        "cri",
+        "ra",
+        "color rendering",
+        "显色指数",
+        "farbwiedergabe"
+      ],
+      "field": "match_specs.cri",
+      "field_expr": "s.cri",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": null,
+      "min_value": 0.0,
+      "max_value": 100.0,
+      "hard_default": false,
+      "weight": 0.4
+    },
+    {
+      "canonical_key": "color_temp_k",
+      "synonyms": [
+        "cct",
+        "color temperature",
+        "colour temperature",
+        "色温",
+        "farbtemperatur"
+      ],
+      "field": "match_specs.color_temp_k_max",
+      "field_expr": "s.color_temp_k_max",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": "k",
+      "min_value": 1000.0,
+      "max_value": 20000.0,
+      "hard_default": false,
+      "weight": 0.35
+    },
+    {
+      "canonical_key": "dali",
+      "synonyms": [
+        "dali",
+        "dali dimming",
+        "dali调光"
+      ],
+      "field": "match_specs.controls_dali",
+      "field_expr": "s.controls_dali",
+      "operators": [
+        "bool_true",
+        "bool_false",
+        "eq"
+      ],
+      "value_type": "boolean",
+      "unit": null,
+      "hard_default": false,
+      "weight": 0.35
+    },
+    {
+      "canonical_key": "bluetooth",
+      "synonyms": [
+        "bluetooth",
+        "蓝牙"
+      ],
+      "field": "match_specs.controls_bluetooth",
+      "field_expr": "s.controls_bluetooth",
+      "operators": [
+        "bool_true",
+        "bool_false",
+        "eq"
+      ],
+      "value_type": "boolean",
+      "unit": null,
+      "hard_default": false,
+      "weight": 0.25
+    },
+    {
+      "canonical_key": "matter",
+      "synonyms": [
+        "matter",
+        "matter protocol",
+        "matter协议"
+      ],
+      "field": "match_specs.controls_matter",
+      "field_expr": "s.controls_matter",
+      "operators": [
+        "bool_true",
+        "bool_false",
+        "eq"
+      ],
+      "value_type": "boolean",
+      "unit": null,
+      "hard_default": false,
+      "weight": 0.25
+    },
+    {
+      "canonical_key": "emergency_light",
+      "synonyms": [
+        "emergency light",
+        "emergency lighting",
+        "notlicht",
+        "应急照明"
+      ],
+      "field": "match_specs.emergency_light",
+      "field_expr": "s.emergency_light",
+      "operators": [
+        "bool_true",
+        "bool_false",
+        "eq"
+      ],
+      "value_type": "boolean",
+      "unit": null,
+      "hard_default": false,
+      "weight": 0.3
+    },
+    {
+      "canonical_key": "runtime_hours",
+      "synonyms": [
+        "runtime",
+        "hours",
+        "service life",
+        "寿命",
+        "stunden"
+      ],
+      "field": "match_specs.runtime_hours",
+      "field_expr": "s.runtime_hours",
+      "operators": [
+        "eq",
+        "gte",
+        "lte",
+        "gt",
+        "lt",
+        "between"
+      ],
+      "value_type": "number",
+      "unit": "h",
+      "min_value": 0.0,
+      "max_value": 200000.0,
+      "hard_default": false,
+      "weight": 0.25
+    },
+    {
+      "canonical_key": "enec",
+      "synonyms": [
+        "enec",
+        "enec certified"
+      ],
+      "field": "match_certs.enec",
+      "field_expr": "c.enec",
+      "operators": [
+        "bool_true",
+        "bool_false",
+        "eq"
+      ],
+      "value_type": "boolean",
+      "unit": null,
+      "hard_default": false,
+      "weight": 0.2
+    }
+  ],
+  "units": {
+    "w": {
+      "canonical": "w",
+      "multiplier": 1.0
+    },
+    "kw": {
+      "canonical": "w",
+      "multiplier": 1000.0
+    },
+    "lm": {
+      "canonical": "lm",
+      "multiplier": 1.0
+    },
+    "lumen": {
+      "canonical": "lm",
+      "multiplier": 1.0
+    },
+    "h": {
+      "canonical": "h",
+      "multiplier": 1.0
+    },
+    "hour": {
+      "canonical": "h",
+      "multiplier": 1.0
+    },
+    "hours": {
+      "canonical": "h",
+      "multiplier": 1.0
+    },
+    "k": {
+      "canonical": "k",
+      "multiplier": 1.0
+    }
+  },
+  "hard_keywords": [
+    "must",
+    "shall",
+    "required",
+    "mandatory",
+    "必须",
+    "必需",
+    "必须满足",
+    "muss",
+    "erforderlich",
+    "zwingend"
+  ],
+  "soft_keywords": [
+    "preferred",
+    "recommended",
+    "optional",
+    "建议",
+    "可选",
+    "最好",
+    "bevorzugt"
+  ],
+  "comparison_keywords": {
+    "gte": [
+      "at least",
+      "minimum",
+      "min",
+      "no less than",
+      "至少",
+      "不低于",
+      "mindestens"
+    ],
+    "lte": [
+      "at most",
+      "maximum",
+      "max",
+      "no more than",
+      "至多",
+      "不高于",
+      "höchstens"
+    ],
+    "gt": [
+      "greater than",
+      "more than",
+      "大于",
+      "mehr als"
+    ],
+    "lt": [
+      "less than",
+      "小于",
+      "weniger als"
+    ]
+  }
+}

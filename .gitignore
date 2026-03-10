@@ -211,3 +211,9 @@ __marimo__/
 # Next.js frontend
 src/apps/web/node_modules/
 src/apps/web/.next/
+frontend/node_modules/
+frontend/.next/
+
+# SwissTender Copilot runtime outputs
+runtime/
+data/profile.json
