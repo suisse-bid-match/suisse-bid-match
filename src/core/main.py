@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Primary CLI entrypoint for tender pipeline with KB bootstrap."""
+"""CLI entrypoint for the novel 7-step tender matching pipeline."""
 
-from tender_pipeline.runner import main
+from pipeline.runner import main
 
 
 if __name__ == "__main__":

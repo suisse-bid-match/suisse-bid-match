@@ -1,3 +1,3 @@
 requests>=2.31.0
-dspy-ai
 pydantic>=2.8.0
+PyYAML>=6.0.1
