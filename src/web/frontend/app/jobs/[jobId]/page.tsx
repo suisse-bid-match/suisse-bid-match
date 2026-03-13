@@ -123,10 +123,10 @@ function extractLlmExecutionFromStepPayload(stepPayload: Record<string, unknown>
 }
 
 function executionPreview(summary: LlmExecutionSummary): string {
-  const statusText = summary.final_status === "succeeded" ? "成功" : "失败";
+  const statusText = summary.final_status === "succeeded" ? "Succeeded" : "Failed";
   const durationText = summary.duration_ms != null ? `${summary.duration_ms}ms` : "-";
-  const fallbackText = summary.fallback_used ? "是" : "否";
-  return `状态: ${statusText} | 响应已返回: ${summary.response_received ? "是" : "否"} | fallback: ${fallbackText} | 耗时: ${durationText}`;
+  const fallbackText = summary.fallback_used ? "Yes" : "No";
+  return `Status: ${statusText} | Response received: ${summary.response_received ? "Yes" : "No"} | fallback: ${fallbackText} | Duration: ${durationText}`;
 }
 
 function mergeLlmTraces(base: LlmTraceMap, steps: JobStepRow[]): LlmTraceMap {
@@ -150,13 +150,13 @@ function getMessageFromPayload(eventType: string, payload: EventPayload): string
     return `${stepName} -> ${stepStatus}`;
   }
   if (eventType === "job_failed") {
-    return `任务失败：${typeof payload.message === "string" ? payload.message : "unknown error"}`;
+    return `Job failed: ${typeof payload.message === "string" ? payload.message : "unknown error"}`;
   }
   if (eventType === "job_completed") {
-    return "任务完成，结果已生成";
+    return "Job completed. Result generated.";
   }
   if (eventType === "job_started") {
-    return "任务已启动";
+    return "Job started";
   }
   if (eventType === "llm_progress") {
     const stepName = typeof payload.step_name === "string" ? payload.step_name : "llm";
@@ -259,7 +259,7 @@ export default function JobDetailPage() {
         setResult(output);
       }
     } catch (error) {
-      setErrorMessage(toGuidedError(error, "稍后刷新页面，或检查 backend 日志"));
+      setErrorMessage(toGuidedError(error, "Refresh later, or check backend logs"));
     }
   }, [jobId, mergeSteps]);
 
@@ -274,7 +274,7 @@ export default function JobDetailPage() {
 
     source.onopen = () => {
       setSseConnected(true);
-      appendEvent({ kind: "system", message: "SSE 已连接", rawPayload: null });
+      appendEvent({ kind: "system", message: "SSE connected", rawPayload: null });
     };
 
     source.addEventListener("step_update", (event) => {
@@ -306,7 +306,7 @@ export default function JobDetailPage() {
       });
 
       if (["error", "failed", "fail"].includes(stepStatus.toLowerCase())) {
-        setErrorMessage(`步骤 ${stepName} 执行失败，请检查该步骤输出。`);
+        setErrorMessage(`Step ${stepName} failed. Please inspect this step output.`);
       }
     });
 
@@ -346,7 +346,7 @@ export default function JobDetailPage() {
       appendEvent({
         id: (event as MessageEvent).lastEventId || undefined,
         kind: "job_started",
-        message: "任务已开始执行",
+        message: "Job execution started",
         rawPayload: null
       });
       setJob((prev) => (prev ? { ...prev, status: "running" } : prev));
@@ -383,7 +383,7 @@ export default function JobDetailPage() {
       if (now - lastSseErrorRef.current > 15000) {
         appendEvent({
           kind: "system",
-          message: "SSE 断线，已自动切换为低频轮询兜底",
+          message: "SSE disconnected. Auto-switched to low-frequency polling fallback.",
           rawPayload: null
         });
         lastSseErrorRef.current = now;
@@ -444,7 +444,7 @@ export default function JobDetailPage() {
     return (
       <div className="page-wrap">
         <section className="panel p-6">
-          <EmptyState title="无效任务 ID" description="请从首页历史任务进入，或重新创建任务。" />
+          <EmptyState title="Invalid Job ID" description="Open from the home history list, or create a new job." />
         </section>
       </div>
     );
@@ -454,7 +454,7 @@ export default function JobDetailPage() {
     <div className="page-wrap grid gap-5">
       <section className="panel p-5 md:p-6">
         <SectionHeader
-          title="任务执行详情"
+          title="Job Execution Details"
           subtitle={`Job ID: ${jobId}`}
           right={<StatusBadge label={job?.status ?? "loading"} tone={toneFromKeyword(job?.status ?? "idle")} className="break-all" />}
         />
@@ -462,35 +462,35 @@ export default function JobDetailPage() {
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <article className="info-card">
             <div className="info-card-top">
-              <span className="info-card-title">任务状态</span>
+              <span className="info-card-title">Job Status</span>
               <StatusBadge label={job?.status ?? "loading"} tone={toneFromKeyword(job?.status ?? "idle")} />
             </div>
             <div className="info-card-value">{job?.status ?? "loading"}</div>
-            <p className="info-card-subtitle">仅以后端状态为准</p>
+            <p className="info-card-subtitle">Backend state is the single source of truth</p>
           </article>
           <article className="info-card">
             <div className="info-card-top">
-              <span className="info-card-title">步骤进度</span>
+              <span className="info-card-title">Step Progress</span>
               <StatusBadge label={`${progress}%`} tone={progress === 100 ? "done" : "active"} />
             </div>
             <div className="info-card-value">{progress}%</div>
-            <p className="info-card-subtitle">仅统计 succeeded 步骤，不将 running 计入完成</p>
+            <p className="info-card-subtitle">Only succeeded steps count as complete; running does not</p>
           </article>
           <article className="info-card">
             <div className="info-card-top">
-              <span className="info-card-title">上传文件数</span>
+              <span className="info-card-title">Uploaded Files</span>
               <StatusBadge label={`${job?.file_count ?? 0}`} tone="active" />
             </div>
             <div className="info-card-value">{job?.file_count ?? 0}</div>
-            <p className="info-card-subtitle">创建后不可在 running/succeeded 状态上传</p>
+            <p className="info-card-subtitle">Uploading is disabled once status is running/succeeded</p>
           </article>
           <article className="info-card">
             <div className="info-card-top">
-              <span className="info-card-title">连接状态</span>
-              <StatusBadge label={sseConnected ? "SSE 在线" : "轮询兜底"} tone={sseConnected ? "done" : "running"} />
+              <span className="info-card-title">Connection</span>
+              <StatusBadge label={sseConnected ? "SSE online" : "Polling fallback"} tone={sseConnected ? "done" : "running"} />
             </div>
-            <div className="info-card-value">{sseConnected ? "实时" : "降级"}</div>
-            <p className="info-card-subtitle">最近同步：{formatDateTime(lastSyncedAt)}</p>
+            <div className="info-card-value">{sseConnected ? "Realtime" : "Fallback"}</div>
+            <p className="info-card-subtitle">Last sync: {formatDateTime(lastSyncedAt)}</p>
           </article>
         </div>
 
@@ -498,16 +498,16 @@ export default function JobDetailPage() {
           <div className="h-full bg-cyan-400 transition-all" style={{ width: `${progress}%` }} />
         </div>
 
-        {errorMessage ? <InlineNotice tone="error" title="执行异常" message={errorMessage} className="mt-4" /> : null}
+        {errorMessage ? <InlineNotice tone="error" title="Execution Error" message={errorMessage} className="mt-4" /> : null}
       </section>
 
       <section className="panel p-5 md:p-6">
         <SectionHeader
-          title="步骤时间线"
-          subtitle="step2-step7 提供结构化卡片视图；step1 维持原始 JSON 视图。"
+          title="Step Timeline"
+          subtitle="step2-step7 use structured cards; step1 keeps raw JSON view."
           right={
             <ActionButton onClick={() => setCompactMode((prev) => !prev)} variant={compactMode ? "primary" : "secondary"}>
-              简洁模式：{compactMode ? "开" : "关"}
+              Compact mode: {compactMode ? "On" : "Off"}
             </ActionButton>
           }
         />
@@ -524,8 +524,8 @@ export default function JobDetailPage() {
                 </div>
                 <div className="timeline-meta">
                   <StatusBadge label={row.statusText} tone={toneFromKeyword(row.statusText)} />
-                  <span className="text-xs muted-text">耗时: {formatDuration(row.durationMs)}</span>
-                  <span className="text-xs muted-text">更新时间: {formatDateTime(row.updatedAt)}</span>
+                  <span className="text-xs muted-text">Duration: {formatDuration(row.durationMs)}</span>
+                  <span className="text-xs muted-text">Updated: {formatDateTime(row.updatedAt)}</span>
                 </div>
               </div>
 
@@ -537,7 +537,7 @@ export default function JobDetailPage() {
               ) : null}
 
               <details className="mt-2">
-                <summary className="cursor-pointer text-xs text-cyan-100">查看原始 JSON</summary>
+                <summary className="cursor-pointer text-xs text-cyan-100">View raw JSON</summary>
                 <pre className="json-box">{JSON.stringify(row.payload ?? {}, null, 2)}</pre>
               </details>
             </article>
@@ -547,11 +547,11 @@ export default function JobDetailPage() {
 
       <section className="grid gap-4 xl:grid-cols-3">
         <section className="panel p-5">
-          <SectionHeader title="事件流" subtitle="先看摘要，再按需看原始事件" />
+          <SectionHeader title="Event Stream" subtitle="Summary first, raw events on demand" />
           <div className="mt-3 rounded-xl border border-white/10 bg-black/25 p-3">
             <div className="flex flex-wrap items-center gap-2 text-xs muted-text">
-              <span>事件总数: {events.length}</span>
-              <span>最近同步: {formatDateTime(lastSyncedAt)}</span>
+              <span>Total events: {events.length}</span>
+              <span>Last sync: {formatDateTime(lastSyncedAt)}</span>
             </div>
             <div className="mt-3 max-h-64 space-y-2 overflow-auto">
               {events.slice(0, 24).map((item) => (
@@ -563,20 +563,20 @@ export default function JobDetailPage() {
                   <p className="mb-0 mt-1 break-words text-sm text-slate-100">{item.message}</p>
                 </div>
               ))}
-              {events.length === 0 ? <EmptyState title="暂无事件" description="任务启动后，这里会实时显示步骤和状态变化。" /> : null}
+              {events.length === 0 ? <EmptyState title="No Events Yet" description="After job start, step and status changes will appear here in realtime." /> : null}
             </div>
           </div>
           <details className="mt-3">
-            <summary className="cursor-pointer text-xs text-cyan-100">查看全部事件 JSON</summary>
+            <summary className="cursor-pointer text-xs text-cyan-100">View full event JSON</summary>
             <pre className="json-box">{JSON.stringify(events, null, 2)}</pre>
           </details>
         </section>
 
         <section className="panel p-5">
-          <SectionHeader title="LLM 实施摘要" subtitle="结构化执行摘要 + 实时 reasoning 文本（若有）" />
+          <SectionHeader title="LLM Execution Summary" subtitle="Structured execution summary + realtime reasoning text (if available)" />
           {llmRows.length === 0 ? (
             <div className="mt-3">
-              <EmptyState title="暂无 LLM 摘要" description="step2/step7 发起 LLM 请求后，这里会显示执行摘要。" />
+              <EmptyState title="No LLM Summary Yet" description="Execution summaries appear here after step2/step7 LLM requests." />
             </div>
           ) : (
             <div className="mt-3 space-y-3">
@@ -596,12 +596,12 @@ export default function JobDetailPage() {
                     <p className="mb-0 mt-2 text-sm text-slate-100">{preview}</p>
                     {execution ? (
                       <p className="mb-0 mt-2 text-xs muted-text">
-                        {executionPreview(execution)} | 更新时间: {formatDateTime(execution.request_finished_at)}
+                        {executionPreview(execution)} | Updated: {formatDateTime(execution.request_finished_at)}
                       </p>
                     ) : null}
                     <details className="mt-2">
-                      <summary className="cursor-pointer text-xs text-cyan-100">查看完整详情</summary>
-                      <pre className="json-box">{reasoningText || "暂无 reasoning 文本"}</pre>
+                      <summary className="cursor-pointer text-xs text-cyan-100">View full details</summary>
+                      <pre className="json-box">{reasoningText || "No reasoning text yet"}</pre>
                       <pre className="json-box">{JSON.stringify(execution ?? {}, null, 2)}</pre>
                     </details>
                   </article>
@@ -612,7 +612,7 @@ export default function JobDetailPage() {
         </section>
 
         <section className="panel p-5">
-          <SectionHeader title="最终结果" subtitle="先看统计摘要，再按需查看原始 JSON" />
+          <SectionHeader title="Final Result" subtitle="Summary first, raw JSON on demand" />
           {finalOutput ? (
             <div className="mt-3 grid gap-2">
               <article className="info-card">
@@ -624,14 +624,14 @@ export default function JobDetailPage() {
               </article>
               <article className="info-card">
                 <div className="info-card-top">
-                  <span className="info-card-title">投标项数量</span>
+                  <span className="info-card-title">Tender Item Count</span>
                   <StatusBadge label={`${finalSummary.tenderCount}`} tone="active" />
                 </div>
                 <div className="info-card-value">{finalSummary.tenderCount}</div>
               </article>
               <article className="info-card">
                 <div className="info-card-top">
-                  <span className="info-card-title">候选结果数量</span>
+                  <span className="info-card-title">Candidate Count</span>
                   <StatusBadge label={`${finalSummary.matchCount}`} tone="active" />
                 </div>
                 <div className="info-card-value">{finalSummary.matchCount}</div>
@@ -639,12 +639,12 @@ export default function JobDetailPage() {
             </div>
           ) : (
             <div className="mt-3">
-              <EmptyState title="结果尚未生成" description="任务完成后会自动展示最终输出和统计摘要。" />
+              <EmptyState title="Result Not Ready" description="Final output and summary appear automatically after job completion." />
             </div>
           )}
 
           <details className="mt-3">
-            <summary className="cursor-pointer text-xs text-cyan-100">查看原始 JSON</summary>
+            <summary className="cursor-pointer text-xs text-cyan-100">View raw JSON</summary>
             <pre className="json-box">{JSON.stringify(result ?? {}, null, 2)}</pre>
           </details>
         </section>

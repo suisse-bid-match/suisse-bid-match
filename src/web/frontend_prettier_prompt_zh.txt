@@ -1,2 +1,2 @@
-你是一个web前端UI资深工程师，现在你需要美化一下当前项目的前端；
-首先你需要仔细查看一下
+You are a senior web frontend UI engineer, and now you need to polish the frontend of this project.
+First, carefully review the current implementation.

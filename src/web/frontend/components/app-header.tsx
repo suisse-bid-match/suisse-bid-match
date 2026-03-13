@@ -7,22 +7,22 @@ import { cx } from "@/components/ui";
 import { getModelSettings, setModelSettings, type ModelSettingsResponse } from "@/lib/api";
 
 const NAV_ITEMS: Array<{ href: "/" | "/rules" | "/stats"; label: string; match: (pathname: string) => boolean }> = [
-  { href: "/", label: "任务控制台", match: (pathname: string) => pathname === "/" || pathname.startsWith("/jobs/") },
-  { href: "/rules", label: "规则工作台", match: (pathname: string) => pathname.startsWith("/rules") },
-  { href: "/stats", label: "统计分析", match: (pathname: string) => pathname.startsWith("/stats") },
+  { href: "/", label: "Task Console", match: (pathname: string) => pathname === "/" || pathname.startsWith("/jobs/") },
+  { href: "/rules", label: "Rules Workbench", match: (pathname: string) => pathname.startsWith("/rules") },
+  { href: "/stats", label: "Analytics", match: (pathname: string) => pathname.startsWith("/stats") },
 ];
 
 function getPageHint(pathname: string) {
   if (pathname.startsWith("/stats")) {
-    return "查看任务耗时、步骤耗时、抽取规模与字段频率热力图";
+    return "View job duration, step duration, extraction scale, and field frequency heatmap";
   }
   if (pathname.startsWith("/rules")) {
-    return "编辑、校验并发布 field_rules 版本";
+    return "Edit, validate, and publish field_rules versions";
   }
   if (pathname.startsWith("/jobs/")) {
-    return "查看任务执行时间线、SSE 事件与最终结果";
+    return "View the execution timeline, SSE events, and final results";
   }
-  return "创建任务、上传投标文件并启动匹配流程";
+  return "Create jobs, upload tender files, and start the matching pipeline";
 }
 
 export function AppHeader() {
@@ -57,7 +57,7 @@ export function AppHeader() {
           </Link>
           <p className="app-brand-subtitle">{getPageHint(pathname)}</p>
         </div>
-        <nav className="app-nav" aria-label="主导航">
+        <nav className="app-nav" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {
             const active = item.match(pathname);
             return (
@@ -67,7 +67,7 @@ export function AppHeader() {
             );
           })}
           <label className="app-model-control" htmlFor="global-model-select">
-            <span className="app-model-label">模型</span>
+            <span className="app-model-label">Model</span>
             <select
               id="global-model-select"
               className="app-model-select"
@@ -80,7 +80,7 @@ export function AppHeader() {
             </select>
           </label>
           <span className={cx("app-key-state", modelSettings?.has_api_key ? "app-key-state-on" : "app-key-state-off")}>
-            {modelSettings?.has_api_key ? "API Key 已配置" : "API Key 缺失"}
+            {modelSettings?.has_api_key ? "API key configured" : "API key missing"}
           </span>
         </nav>
       </div>

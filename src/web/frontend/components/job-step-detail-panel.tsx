@@ -333,7 +333,7 @@ function renderStructuredFallback(stepName: string): ReactNode {
   return (
     <InlineNotice
       tone="warning"
-      message={`该步骤（${stepName}）的 payload 与结构化模板不匹配，已自动回退到原始 JSON。`}
+      message={`This step (${stepName}) payload does not match the structured template. It has automatically fallen back to raw JSON.`}
       className="mt-3"
     />
   );
@@ -360,10 +360,10 @@ function renderStep2(step: StepProgressState, compactMode: boolean): ReactNode {
   return (
     <div className="step-detail-wrap">
       <div className="step-detail-kpi-grid">
-        {kpiCard("投标项", products.length, "step2 提取到的 product 数量")}
-        {kpiCard("需求条目", totalRequirements, "累计 requirements 条目")}
-        {kpiCard("已判定算子", ruleReadyCount, "含 operator 的需求条目")}
-        {kpiCard("来源片段", sourceCount, "含 source 证据的条目")}
+        {kpiCard("Tender Items", products.length, "Number of products extracted in step2")}
+        {kpiCard("Requirements", totalRequirements, "Total requirement entries")}
+        {kpiCard("Operator Matched", ruleReadyCount, "Requirement entries with operator")}
+        {kpiCard("Source Snippets", sourceCount, "Entries with source evidence")}
       </div>
       <div className="step-detail-grid">
         {productPreview.map((product) => (
@@ -372,7 +372,7 @@ function renderStep2(step: StepProgressState, compactMode: boolean): ReactNode {
               <div>
                 <p className="step-detail-card-title">{product.productName}</p>
                 <p className="step-detail-card-subtitle">
-                  {product.productKey} · 数量 {product.quantity}
+                  {product.productKey} · Qty {product.quantity}
                 </p>
               </div>
               <StatusBadge label={`${product.requirements.length} req`} tone="active" />
@@ -382,7 +382,7 @@ function renderStep2(step: StepProgressState, compactMode: boolean): ReactNode {
         ))}
       </div>
       {products.length > productPreview.length ? (
-        <p className="step-detail-muted">简洁模式仅显示前 {productPreview.length} 个投标项，可关闭简洁模式查看全部。</p>
+        <p className="step-detail-muted">Compact mode shows only the first {productPreview.length} tender items. Disable compact mode to view all.</p>
       ) : null}
     </div>
   );
@@ -406,10 +406,10 @@ function renderStep3(step: StepProgressState, compactMode: boolean): ReactNode {
   return (
     <div className="step-detail-wrap">
       <div className="step-detail-kpi-grid">
-        {kpiCard("规则总数", rules.length, "field_rules 条目")}
-        {kpiCard("硬约束", hardCount, "is_hard=true")}
-        {kpiCard("软约束", softCount, "is_hard=false")}
-        {kpiCard("平均置信度", avgConfidence.toFixed(2), "operator/hardness 置信度均值")}
+        {kpiCard("Rules", rules.length, "field_rules entries")}
+        {kpiCard("Hard Constraints", hardCount, "is_hard=true")}
+        {kpiCard("Soft Constraints", softCount, "is_hard=false")}
+        {kpiCard("Avg Confidence", avgConfidence.toFixed(2), "Average operator/hardness confidence")}
       </div>
 
       <div className="overflow-auto rounded-xl border border-white/10">
@@ -464,10 +464,10 @@ function renderStep4(step: StepProgressState, compactMode: boolean): ReactNode {
   return (
     <div className="step-detail-wrap">
       <div className="step-detail-kpi-grid">
-        {kpiCard("总需求", allRequirements.length, "合并前后的需求总条数")}
-        {kpiCard("已合并算子", mergedCount, "operator 已写入")}
-        {kpiCard("硬/软约束", `${hardCount}/${softCount}`, "hard 与 soft 分布")}
-        {kpiCard("未知硬度", unknownCount, "is_hard 未定义")}
+        {kpiCard("Total Requirements", allRequirements.length, "All requirements before and after merge")}
+        {kpiCard("Merged Operators", mergedCount, "Entries with operator merged")}
+        {kpiCard("Hard/Soft", `${hardCount}/${softCount}`, "Distribution of hard vs soft")}
+        {kpiCard("Unknown Hardness", unknownCount, "is_hard undefined")}
       </div>
 
       <div className="step-detail-grid">
@@ -488,14 +488,14 @@ function renderStep4(step: StepProgressState, compactMode: boolean): ReactNode {
                     {truncate(`${row.field} ${row.operator ?? "?"} ${row.value}`, compactMode ? 42 : 72)}
                   </span>
                 ))}
-                {constraints.length === 0 ? <span className="step-detail-chip-muted">未识别到可合并约束</span> : null}
+                {constraints.length === 0 ? <span className="step-detail-chip-muted">No mergeable constraints detected</span> : null}
               </div>
             </article>
           );
         })}
       </div>
       {products.length > previewProducts.length ? (
-        <p className="step-detail-muted">简洁模式仅显示前 {previewProducts.length} 个投标项，可关闭简洁模式查看全部。</p>
+        <p className="step-detail-muted">Compact mode shows only the first {previewProducts.length} tender items. Disable compact mode to view all.</p>
       ) : null}
     </div>
   );
@@ -517,10 +517,10 @@ function renderStep5(step: StepProgressState, compactMode: boolean, resultLimit:
   return (
     <div className="step-detail-wrap">
       <div className="step-detail-kpi-grid">
-        {kpiCard("SQL 条数", queries.length, "step5 输出 query 数")}
-        {kpiCard("硬约束总数", hardConstraintTotal, "hard_constraints_used 汇总")}
-        {kpiCard("当前显示", previewRows.length, `默认 Top ${resultLimit}`)}
-        {kpiCard("展示模式", compactMode ? "简洁" : "完整", "可随时切换")}
+        {kpiCard("SQL Queries", queries.length, "Query count from step5 output")}
+        {kpiCard("Hard Constraints", hardConstraintTotal, "Total hard_constraints_used")}
+        {kpiCard("Showing", previewRows.length, `Default Top ${resultLimit}`)}
+        {kpiCard("Display Mode", compactMode ? "Compact" : "Full", "Can be toggled anytime")}
       </div>
       <div className="step-detail-grid">
         {previewRows.map((row) => (
@@ -538,13 +538,13 @@ function renderStep5(step: StepProgressState, compactMode: boolean, resultLimit:
                   {truncate(`${constraint.field} ${constraint.operator} ${constraint.value}`, compactMode ? 44 : 80)}
                 </span>
               ))}
-              {row.hardConstraints.length === 0 ? <span className="step-detail-chip-muted">未写入硬约束</span> : null}
+              {row.hardConstraints.length === 0 ? <span className="step-detail-chip-muted">No hard constraints written</span> : null}
             </div>
             <pre className="step-detail-sql-preview">{compactMode ? truncate(row.sql, 360) : row.sql}</pre>
           </article>
         ))}
       </div>
-      {queries.length > previewRows.length ? <p className="step-detail-muted">仅展示前 {previewRows.length} 条 SQL。</p> : null}
+      {queries.length > previewRows.length ? <p className="step-detail-muted">Only the first {previewRows.length} SQL statements are shown.</p> : null}
     </div>
   );
 }
@@ -571,10 +571,10 @@ function renderStep6(step: StepProgressState, compactMode: boolean, resultLimit:
   return (
     <div className="step-detail-wrap">
       <div className="step-detail-kpi-grid">
-        {kpiCard("执行查询", results.length, "step6 SQL 执行数")}
-        {kpiCard("累计结果行", totalRows, "row_count 汇总")}
-        {kpiCard("平均耗时", Number.isFinite(avgLatency) ? `${Math.round(avgLatency)}ms` : "-", "每条 SQL 平均")}
-        {kpiCard("当前显示", previewRows.length, `默认 Top ${resultLimit}`)}
+        {kpiCard("Executed Queries", results.length, "SQL executions in step6")}
+        {kpiCard("Total Rows", totalRows, "Total row_count")}
+        {kpiCard("Avg Latency", Number.isFinite(avgLatency) ? `${Math.round(avgLatency)}ms` : "-", "Average per SQL")}
+        {kpiCard("Showing", previewRows.length, `Default Top ${resultLimit}`)}
       </div>
 
       {compactMode ? (
@@ -617,7 +617,7 @@ function renderStep6(step: StepProgressState, compactMode: boolean, resultLimit:
                 </div>
                 <StatusBadge label={`${row.rowCount} rows`} tone="active" />
               </header>
-              <p className="step-detail-muted">耗时：{formatDuration(row.elapsedMs)}</p>
+              <p className="step-detail-muted">Duration: {formatDuration(row.elapsedMs)}</p>
               {row.rows.slice(0, 2).map((sample, index) => (
                 <div key={`${row.queryId}-sample-${index}`} className="step-detail-sample">
                   <p className="step-detail-sample-title">sample #{index + 1}</p>
@@ -637,7 +637,7 @@ function renderStep6(step: StepProgressState, compactMode: boolean, resultLimit:
         </div>
       )}
 
-      {results.length > previewRows.length ? <p className="step-detail-muted">仅展示前 {previewRows.length} 条执行结果。</p> : null}
+      {results.length > previewRows.length ? <p className="step-detail-muted">Only the first {previewRows.length} execution results are shown.</p> : null}
     </div>
   );
 }
@@ -661,10 +661,10 @@ function renderStep7(step: StepProgressState, compactMode: boolean, resultLimit:
   return (
     <div className="step-detail-wrap">
       <div className="step-detail-kpi-grid">
-        {kpiCard("投标项结果", matchResults.length, "match_results 项目数")}
-        {kpiCard("候选总量", totalCandidates, "所有 candidates 汇总")}
-        {kpiCard("通过硬约束", hardPassCount, "passes_hard=true")}
-        {kpiCard("平均软分", avgSoftScore.toFixed(3), "soft_match_score 平均值")}
+        {kpiCard("Tender Result Items", matchResults.length, "match_results item count")}
+        {kpiCard("Total Candidates", totalCandidates, "All candidates combined")}
+        {kpiCard("Hard Constraint Pass", hardPassCount, "passes_hard=true")}
+        {kpiCard("Avg Soft Score", avgSoftScore.toFixed(3), "Average soft_match_score")}
       </div>
 
       <div className="step-detail-grid">
@@ -675,7 +675,7 @@ function renderStep7(step: StepProgressState, compactMode: boolean, resultLimit:
               <header className="step-detail-card-head">
                 <div>
                   <p className="step-detail-card-title">{row.productKey}</p>
-                  <p className="step-detail-card-subtitle">候选数：{row.candidates.length}</p>
+                  <p className="step-detail-card-subtitle">Candidates: {row.candidates.length}</p>
                 </div>
                 <StatusBadge label={`Top ${previewCandidates.length}`} tone="active" />
               </header>
@@ -716,7 +716,7 @@ function renderStep7(step: StepProgressState, compactMode: boolean, resultLimit:
                 </table>
               </div>
               {row.candidates.length > previewCandidates.length ? (
-                <p className="step-detail-muted">该投标项仅展示前 {previewCandidates.length} 个候选。</p>
+                <p className="step-detail-muted">Only the first {previewCandidates.length} candidates are shown for this tender item.</p>
               ) : null}
             </article>
           );

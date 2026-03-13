@@ -1,47 +1,47 @@
-我想做一个一个面向灯具投标场景的“端到端匹配”项目，具体匹配投标中所需求的灯具产品到供应商公司所能提供的灯具产品，通过比较灯具技术参数来匹配；
-实现主要依赖LLM(OpenAI API)的能力，是一个多步骤请求LLM的过程；
-在这个过程中，我会提供一些输入给LLM，LLM会根据这些输入生成一些输出，这些输出会被我用来进行下一步的请求；
+I want to build an end-to-end matching project for lighting tenders. The goal is to match products required in tender documents with products available in a supplier's catalog by comparing technical parameters.
+The implementation mainly relies on LLM capabilities (OpenAI API) and follows a multi-step LLM workflow.
+In this workflow, I provide inputs to the LLM, the LLM generates outputs, and those outputs are used as inputs for subsequent steps.
 
-OpenAI API的key（用来后续请求LLM）和模型选择、
-供应商公司产品数据库的配置信息（主要关注vw_bid_products、vw_bid_specs，包含了所有技术参数）
-都可以在.env中找到
+The OpenAI API key (for later LLM requests), model selection, and supplier product database configuration
+(mainly `vw_bid_products` and `vw_bid_specs`, which include all technical parameters)
+can be found in `.env`.
 
 
 
-多步骤请求的过程如下(里面包含了LLM和非LLM的步骤)：
+The multi-step workflow is as follows (including both LLM and non-LLM steps):
 {
     "step1(LLM)": {
-        "input": "我们有一个需要上传到OpenAI vector store的知识库文件夹叫upload_corpus_kb，里面包含了瑞士灯具行业的专业知识",
-        "task": "首先检查vector store是否已经有对应的知识库，如果没有再上传，有的话直接到下一步"
+        "input": "We have a knowledge base folder named upload_corpus_kb that must be uploaded to OpenAI vector store. It contains professional knowledge for the Swiss lighting industry.",
+        "task": "First check whether the vector store already has the corresponding knowledge base. If not, upload it; if yes, continue to the next step."
     },
     "step2(LLM)": {
-        "input": "投标文件夹，里面包含了投标对于灯具的需求说明文档、数据库的vw_bid_products和vw_bid_specs两张表的schema（包含了字段的所有信息）（也是json，如果没有，那就通过代码查询数据库schema，再转成json）",
-        "output": "提取出多个灯具在投标中所需求的相关参数信息，如型号、数量、技术参数等，只抽取参数名和参数值（或者范围），其中参数名需要和数据库schema对齐（写成table.field的形式，方便后续直接在此基础上构建SQL语句），需要输出成json"，
-        "note": "允许LLM使用web search和file search（搜查刚刚的知识库）的能力来获取信息"
+        "input": "Tender folder containing requirement documents for lighting products, and schemas of vw_bid_products and vw_bid_specs (including all field information, in JSON; if unavailable, query database schema in code and convert to JSON).",
+        "output": "Extract required parameter information for multiple lighting products in the tender, such as model, quantity, and technical parameters. Extract only parameter names and parameter values (or ranges). Parameter names must align with database schema and use table.field format so SQL can be built directly later. Output must be JSON.",
+        "note": "LLM may use web search and file search (searching the uploaded knowledge base) to gather information."
     },
     "step3(LLM)": {
-        "input": "数据库的vw_bid_products和vw_bid_specs两张表的schema（包含了字段的所有信息）（也是json，如果没有，那就通过代码查询数据库schema，再转成json）",
-        "output": "决定投标过程中的软硬约束，哪些参数（字段）是一定要满足的，哪些允许一点点的不满足，通过设置一个is_hard来表明是否是硬约束，尽量将要求设置宽松一点，只把最重要的设置成硬约束，因为后面我们需要用硬约束写SQL查询数据库，我们目的是过滤一部分数据，而不是直接选出那个产品，硬约束少一点有助于我们找到更多的候选产品，但是同时也要保证真正的硬约束不能被忽略"
-        "note": "允许LLM使用web search和file search（搜查刚刚的知识库）的能力来获取信息"
+        "input": "Schemas of vw_bid_products and vw_bid_specs (including all field information, in JSON; if unavailable, query database schema in code and convert to JSON).",
+        "output": "Decide soft and hard constraints for the tender process: which parameters (fields) must be satisfied and which can be slightly unmet. Use is_hard to indicate hard constraints. Keep rules relatively relaxed and mark only the most critical requirements as hard constraints, because hard constraints are used to build SQL for filtering data (not selecting the final winner directly). Fewer hard constraints can preserve more candidates, but true hard constraints must not be ignored.",
+        "note": "LLM may use web search and file search (searching the uploaded knowledge base) to gather information."
     },
     "step4": {
-        "input": "step2的输出、step3的输出",
-        "output": "以step3输出中的数据库字段为key，匹配step2输出中对应的字段，然后把软硬约束的判断结果直接打补丁进去，这一步输出可以看作是step2和3输出的融合"
-        "note": "不需要llm，这步仅靠字符串匹配以及json添加操作就可以完成"
-    }
+        "input": "Output of step2 and step3",
+        "output": "Use database fields from step3 output as keys, match corresponding fields in step2 output, and patch in soft/hard constraint decisions. This output is the merged result of step2 and step3.",
+        "note": "No LLM needed. This step can be completed with string matching and JSON mutation."
+    },
     "step5": {
-        "input": "step4的输出"，
-        "output": "找到所有硬约束参数，基于它们写SQL查询语句，查数据库所有满足这些硬约束的产品。投标中有多个被需求的产品，所有这里会有对应数量的SQL语句"
-        "note": "不需要llm，这步只需要json操作、字符串匹配，SQL模板建立就可以完成"    
-    }
+        "input": "Output of step4",
+        "output": "Find all hard-constraint parameters and build SQL queries from them to fetch all products that satisfy those hard constraints. Since the tender may contain multiple requested products, this step produces the same number of SQL queries.",
+        "note": "No LLM needed. This step only requires JSON operations, string matching, and SQL templating."
+    },
     "step6": {
-        "input": "step5的输出"，
-        "output": "执行SQL语句后返回的结果，把结果concat到input中"
-        "note": "不需要llm"    
-    }
+        "input": "Output of step5",
+        "output": "Execute SQL queries and append returned results to the input.",
+        "note": "No LLM needed."
+    },
     "step7(LLM)": {
-        "input": "step6的输出、step4的输出"，
-        "output": "有了硬约束挑选出来的候选的供应商公司产品集合，我们想要根据软约束决定哪个产品最适合投标中需求的产品，输出是一个排序后的候选产品列表，排序依据是满足软约束的程度，满足越多排越前面，同时输出每个产品满足了哪些软约束，哪些软约束没有满足"
-        "note": "允许LLM使用web search和file search（搜查刚刚的知识库）的能力来获取信息"
+        "input": "Output of step6 and step4",
+        "output": "Given the candidate supplier product set filtered by hard constraints, determine which product best fits each tender requirement based on soft constraints. Output a ranked candidate list, sorted by degree of soft-constraint satisfaction. Also report which soft constraints each candidate satisfies and which remain unmet.",
+        "note": "LLM may use web search and file search (searching the uploaded knowledge base) to gather information."
     }
 }

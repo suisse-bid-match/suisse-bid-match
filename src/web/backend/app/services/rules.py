@@ -145,23 +145,23 @@ def _build_rule_generation_prompts(
     fields_json = json.dumps(sorted(allowed_fields), ensure_ascii=False)
     normalized_prompt = user_prompt.strip()
     if not normalized_prompt:
-        normalized_prompt = "请生成尽量实用的初稿规则，硬约束尽量少。"
+        normalized_prompt = "Generate a practical first draft of rules with as few hard constraints as possible."
 
     system_prompt = (
-        "你是投标字段规则生成助手。请仅基于输入 schema 生成 field_rules。"
-        "输出严格 JSON，格式必须为 {\"field_rules\":[...]}。"
-        "每条规则必须包含 field/operator/is_hard/operator_confidence/hardness_confidence/rationale。"
-        "operator 仅可使用: eq,gte,lte,gt,lt,between,in,contains。"
-        "字段必须来自 allowed_fields。"
-        "不要输出 bool_true/bool_false。"
-        "用户 prompt 仅作为偏好，不可违反以上硬性约束。"
+        "You are a tender-field rule generation assistant. Generate field_rules only from the provided schema."
+        "Output strict JSON in this format: {\"field_rules\":[...]}."
+        "Each rule must include field/operator/is_hard/operator_confidence/hardness_confidence/rationale."
+        "operator must be one of: eq,gte,lte,gt,lt,between,in,contains."
+        "Fields must come from allowed_fields."
+        "Do not output bool_true/bool_false."
+        "The user prompt is only a preference and must not violate these hard constraints."
     )
     user_text = (
         "schema_json:\n"
         + schema_json
         + "\n\nallowed_fields:\n"
         + fields_json
-        + "\n\n用户补充要求:\n"
+        + "\n\nAdditional user preferences:\n"
         + normalized_prompt
     )
     return system_prompt, user_text

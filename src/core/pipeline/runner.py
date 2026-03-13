@@ -130,8 +130,9 @@ def _extract_step3_payload(raw: dict) -> tuple[dict, list[str]]:
 def _build_step2_prompt(allowed_fields: list[str]) -> str:
     fields_json = json.dumps(allowed_fields, ensure_ascii=False)
     return (
-        "你是灯具投标参数抽取专家。任务：从上传的投标文件中抽取每个被需求产品的参数。\n"
-        "必须输出严格 JSON，且只能使用如下结构：\n"
+        "You are an expert in extracting tender parameters for lighting products. "
+        "Task: extract parameters for each requested product from uploaded tender files.\n"
+        "You must output strict JSON and only use this structure:\n"
         "{\n"
         '  "tender_products":[\n'
         "    {\n"
@@ -151,19 +152,20 @@ def _build_step2_prompt(allowed_fields: list[str]) -> str:
         "  ],\n"
         '  "uncertainties":[]\n'
         "}\n"
-        "硬性规则：\n"
-        "1) requirements 中禁止输出 operator/is_hard/hardness_confidence/operator_confidence。\n"
-        "2) field 必须是 table.column，并且必须在 allowed_fields 中。\n"
-        "3) 同一个 product_key 下 field 不允许重复。\n"
-        "4) 仅抽取参数名和参数值（或范围），不要写 SQL。\n"
+        "Hard rules:\n"
+        "1) Do not output operator/is_hard/hardness_confidence/operator_confidence in requirements.\n"
+        "2) field must be table.column and must exist in allowed_fields.\n"
+        "3) field cannot repeat under the same product_key.\n"
+        "4) Extract only parameter names and values (or ranges); do not write SQL.\n"
         f"allowed_fields:\n{fields_json}\n"
     )
 
 
 def _build_step7_prompt() -> str:
     return (
-        "你是投标候选排序专家。输入包含 step4(需求+软硬约束) 和 step6(SQL候选结果)。\n"
-        "只输出严格 JSON，结构如下：\n"
+        "You are an expert at ranking tender candidates. Input includes step4 (requirements + hard/soft constraints) "
+        "and step6 (SQL candidate results).\n"
+        "Output strict JSON only, with this structure:\n"
         "{\n"
         '  "match_results":[\n'
         "    {\n"
@@ -184,10 +186,10 @@ def _build_step7_prompt() -> str:
         "  ],\n"
         '  "uncertainties":[]\n'
         "}\n"
-        "规则：\n"
-        "1) 只用 is_hard=false 且有 operator 的软约束进行排序。\n"
-        "2) 硬约束已经由 SQL 过滤，不要重新放宽硬约束。\n"
-        "3) 分数范围建议 [0,1]。\n"
+        "Rules:\n"
+        "1) Rank candidates using only soft constraints where is_hard=false and operator exists.\n"
+        "2) Hard constraints are already filtered by SQL; do not relax them again.\n"
+        "3) Recommended score range is [0,1].\n"
     )
 
 
@@ -604,7 +606,7 @@ def main(argv: list[str] | None = None) -> int:
             api_key,
             model,
             system_prompt=_build_step2_prompt(sorted(allowed_fields)),
-            user_text="提取投标灯具需求参数并按要求输出严格 JSON。",
+            user_text="Extract tender lighting requirement parameters and return strict JSON as required.",
             file_ids=tender_file_ids,
             tools=tools or None,
             include=include or None,

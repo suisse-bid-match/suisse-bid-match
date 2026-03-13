@@ -1,32 +1,32 @@
-关注suisse-bid-match文件夹，现在core代码不要动了，我需要在此之上构建一个前后端web服务。
-前端使用Next.js + Tailwind CSS + TypeScript,后端使用FastAPI + Python，数据库使用PostgreSQL。
-前端主要负责用户界面展示和交互，后端负责处理业务逻辑和与数据库的交互。
+Focus on the `suisse-bid-match` folder. Do not modify core code for now. I need to build a full-stack web service on top of it.
+Frontend uses Next.js + Tailwind CSS + TypeScript. Backend uses FastAPI + Python. Database uses PostgreSQL.
+The frontend is responsible for UI display and interaction, while the backend handles business logic and database interaction.
 
-主要想法：
-后端把core（核心算法）中提供的脚本进一步封装成后端中的服务接口，后端接口应该被设计的优雅和极简，便于未来的维护和扩展。
-
-
-几个需要被实现的流程：
-用户在前端应当能够上传投标文件或者投标文件夹，前端将文件传输给后端，后端接收文件并调用core中的API进行处理，最后将处理结果返回给前端进行展示。
-文件类型只允许PDF、DOCX、XLSX。
-逐文件上传并附带相对路径。
-
-在处理过程中，前端应该提供一些交互式的界面元素，例如进度条、状态提示等，以提升用户体验。
-在处理过程中，后端应该能够处理各种异常情况，例如文件格式错误、处理失败等，并将错误信息返回给前端进行展示。
-在处理过程中，前端应该展示各阶段的处理结果，例如参数提取结果、约束判断结果、数据库查询结果等，以便用户能够清晰地了解整个处理流程。
-
-在src文件夹中有一个文件叫field_rules.json，这个文件包含了数据库中字段的一些规则和说明，这是core中进行软硬约束判断、数值方向判断等功能的重要参考文件。
-这个文件应该展示在前端的某个界面中，供用户参考和理解数据库字段的含义和使用规则。
-并且用户可以在前端界面中修改这些规则，例如修改某个字段的约束类型（硬约束或软约束），修改数值方向（大于、小于等），修改字段的说明等。修改后的规则应该能够被保存到后端，并且在core中进行相应的处理时能够使用最新的规则信息。
-此外，用户还可以在前端界面中选择用LLM去自动生成这些规则。
-无论是用户手动修改还是使用LLM自动生成，都是在编辑界面中完成，然后用户决定是否提交修改。
+Main idea:
+The backend should further wrap scripts provided by core (the core algorithm) into backend service APIs. The backend APIs should be elegant and minimal, making future maintenance and extension easy.
 
 
-我们将按照以下步骤进行开发：
-1. **环境搭建**：首先，我们需要搭建前端和后端的开发环境。前端使用Next.js框架，后端使用FastAPI框架，并确保两者能够顺利运行。
-2. **数据库设计**：根据现有的数据库结构，我们需要设计数据库模型，并使用SQLAlchemy或其他ORM工具来与PostgreSQL数据库进行交互。
-3. **API设计**：我们需要设计后端API接口，以便前端能够通过HTTP请求与后端进行通信。这些接口将包括获取产品信息、提交投标要求等功能。
-4. **前端开发**：我们将使用Next.js和Tailwind CSS来开发前端界面，包括文件上传界面、结果展示界面、规则编辑界面等。
-5. **后端开发**：我们将使用FastAPI来开发后端逻辑，包括处理文件上传、调用core中的API进行处理、与数据库交互等功能。
+Flows that need to be implemented:
+Users should be able to upload tender files or a tender folder in the frontend. The frontend sends files to the backend, the backend receives them and calls core APIs for processing, then returns processing results to the frontend for display.
+Allowed file types are only PDF, DOCX, and XLSX.
+Upload file by file and include relative paths.
 
-整个项目应该保持优雅的设计风格，强调可扩展性和易维护性。我们将使用模块化的代码结构，清晰的接口设计来确保项目的质量和可维护性。
+During processing, the frontend should provide interactive UI elements such as progress bars and status hints to improve user experience.
+During processing, the backend should handle various exceptions (for example, invalid file formats or processing failure) and return error messages for frontend display.
+During processing, the frontend should show intermediate results at each stage (for example parameter extraction, constraint decisions, and database query results) so users can clearly understand the full workflow.
+
+There is a file named `field_rules.json` in `src`. It contains rules and descriptions for database fields and is an important reference for soft/hard constraint judgment and numeric direction logic in core.
+This file should be shown in a frontend page for user reference, to help users understand field meaning and usage rules.
+Users should be able to edit these rules in the frontend, for example changing a field's constraint type (hard/soft), changing numeric direction (greater than/less than), and editing field descriptions. Updated rules should be saved to the backend and used by core with the latest version during processing.
+In addition, users should be able to use an LLM from the frontend to auto-generate rules.
+Whether users edit manually or use LLM generation, both should happen in the editor page, and users decide whether to submit changes.
+
+
+Development steps:
+1. **Environment setup**: Set up frontend and backend development environments. Frontend uses Next.js, backend uses FastAPI, and both should run smoothly.
+2. **Database design**: Based on the existing database structure, design database models and use SQLAlchemy or another ORM to interact with PostgreSQL.
+3. **API design**: Design backend APIs so the frontend can communicate via HTTP requests. APIs include fetching product info, submitting tender requirements, and related operations.
+4. **Frontend development**: Build frontend pages with Next.js and Tailwind CSS, including file upload, results display, and rule editing pages.
+5. **Backend development**: Build backend logic with FastAPI, including file upload handling, core API invocation, and database interaction.
+
+The project should maintain an elegant design style and emphasize scalability and maintainability. Use modular code structure and clear interface design to ensure project quality and maintainability.

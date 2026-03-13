@@ -39,14 +39,14 @@ const DRAFT_VIEWPORT_HEIGHT = 640;
 const MAX_COPILOT_PROMPT_CHARS = 2000;
 
 const VERSION_STATUS_OPTIONS: Array<{ label: string; value: "all" | RuleStatus }> = [
-  { label: "全部状态", value: "all" },
+  { label: "All statuses", value: "all" },
   { label: "published", value: "published" },
   { label: "draft", value: "draft" },
   { label: "archived", value: "archived" },
 ];
 
 const VERSION_SOURCE_OPTIONS: Array<{ label: string; value: "all" | RuleSource }> = [
-  { label: "全部来源", value: "all" },
+  { label: "All sources", value: "all" },
   { label: "manual", value: "manual" },
   { label: "llm", value: "llm" },
   { label: "seed", value: "seed" },
@@ -115,9 +115,9 @@ function countValidationItems(report: Record<string, unknown>, key: "errors" | "
 }
 
 function draftModeLabel(mode: DraftViewMode): string {
-  if (mode === "issues") return "仅错误/警告";
-  if (mode === "modified") return "仅已修改";
-  return "全部";
+  if (mode === "issues") return "Errors / Warnings only";
+  if (mode === "modified") return "Modified only";
+  return "All";
 }
 
 function asRecord(input: unknown): Record<string, unknown> | null {
@@ -180,7 +180,7 @@ export default function RulesPage() {
   const [editorSourceVersionId, setEditorSourceVersionId] = useState<string | null>(null);
   const [baselineSnapshot, setBaselineSnapshot] = useState<string>(JSON.stringify({ field_rules: [] }));
   const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState<NoticeState>({ tone: "info", message: "正在加载规则版本..." });
+  const [notice, setNotice] = useState<NoticeState>({ tone: "info", message: "Loading rule versions..." });
   const [currentPublished, setCurrentPublished] = useState<RuleVersion | null>(null);
   const [editorInitialized, setEditorInitialized] = useState(false);
 
@@ -310,9 +310,9 @@ export default function RulesPage() {
       const current = await getCurrentRule().catch(() => null);
       setCurrentPublished(current);
       if (current) {
-        setNotice({ tone: "success", message: `已加载当前发布版本 v${current.version_number}` });
+        setNotice({ tone: "success", message: `Loaded current published version v${current.version_number}` });
       } else {
-        setNotice({ tone: "warning", message: "当前没有已发布版本，请先生成或保存草稿后发布。" });
+        setNotice({ tone: "warning", message: "No published version yet. Generate or save a draft first, then publish." });
       }
     })();
   }, []);
@@ -325,7 +325,7 @@ export default function RulesPage() {
 
   useEffect(() => {
     if (versionsError) {
-      setNotice({ tone: "error", message: `原因：${versionsError}。下一步：确认 backend 服务后重试` });
+      setNotice({ tone: "error", message: `Cause: ${versionsError}. Next: verify backend service and retry.` });
     }
   }, [versionsError]);
 
@@ -375,7 +375,7 @@ export default function RulesPage() {
     setCopilotReasoning(version.copilot_log?.reasoning_summary ?? "");
     setCopilotExecution(version.copilot_log?.execution_summary ?? null);
     setDraftMode("issues");
-    setNotice({ tone: "info", message: `已加载版本 v${version.version_number} 到编辑器。` });
+    setNotice({ tone: "info", message: `Loaded version v${version.version_number} into the editor.` });
   }
 
   function addRow() {
@@ -388,12 +388,12 @@ export default function RulesPage() {
 
   async function handleSaveDraft() {
     if (!validation.valid) {
-      setNotice({ tone: "error", message: "草稿校验未通过，请先修复错误项。" });
+      setNotice({ tone: "error", message: "Draft validation failed. Fix errors before saving." });
       return;
     }
 
     setBusy(true);
-    setNotice({ tone: "info", message: "正在保存草稿..." });
+    setNotice({ tone: "info", message: "Saving draft..." });
 
     try {
       const source: RuleSource = pendingCopilotLog ? "llm" : "manual";
@@ -404,9 +404,9 @@ export default function RulesPage() {
       setBaselineSnapshot(JSON.stringify(cloned));
       setPendingCopilotLog(saved.copilot_log ?? null);
       await refreshVersions();
-      setNotice({ tone: "success", message: `草稿已保存为 v${saved.version_number}` });
+      setNotice({ tone: "success", message: `Draft saved as v${saved.version_number}` });
     } catch (error) {
-      setNotice({ tone: "error", message: toGuidedError(error, "修复草稿后重新保存") });
+      setNotice({ tone: "error", message: toGuidedError(error, "Fix the draft and save again.") });
     } finally {
       setBusy(false);
     }
@@ -414,11 +414,11 @@ export default function RulesPage() {
 
   async function handleGenerateDraft() {
     if (!modelSettings?.has_api_key) {
-      setNotice({ tone: "error", message: "原因：OpenAI API Key 未配置。下一步：先配置 OPENAI_API_KEY 后再生成。" });
+      setNotice({ tone: "error", message: "Cause: OpenAI API key is not configured. Next: configure OPENAI_API_KEY before generating." });
       return;
     }
     if (copilotPrompt.length > MAX_COPILOT_PROMPT_CHARS) {
-      setNotice({ tone: "error", message: `Prompt 超长，请限制在 ${MAX_COPILOT_PROMPT_CHARS} 字符以内。` });
+      setNotice({ tone: "error", message: `Prompt is too long. Keep it within ${MAX_COPILOT_PROMPT_CHARS} characters.` });
       return;
     }
 
@@ -426,7 +426,7 @@ export default function RulesPage() {
     setCopilotReasoning("");
     setCopilotExecution(null);
     setPendingCopilotLog(null);
-    setNotice({ tone: "info", message: "Copilot 正在生成规则预览（仅加载到编辑器，不自动入库）..." });
+    setNotice({ tone: "info", message: "Copilot is generating a rule preview (loaded into editor only, not auto-saved)..." });
 
     try {
       let previewPayload: RulePayload | null = null;
@@ -483,12 +483,12 @@ export default function RulesPage() {
           return;
         }
         if (event === "error") {
-          throw new Error(asString(data.message) ?? "Copilot 流式生成失败");
+          throw new Error(asString(data.message) ?? "Copilot stream generation failed");
         }
       });
 
       if (!previewPayload) {
-        throw new Error("Copilot 未返回可用规则预览");
+        throw new Error("Copilot did not return a usable rule preview");
       }
 
       const cloned = clonePayload(previewPayload);
@@ -517,9 +517,9 @@ export default function RulesPage() {
         execution_summary: summaryForLog,
       };
       setPendingCopilotLog(nextLog);
-      setNotice({ tone: "success", message: "规则预览已加载到编辑器。确认后点击“保存草稿”才会入库。" });
+      setNotice({ tone: "success", message: 'Rule preview loaded into editor. It is saved only when you click "Save Draft".' });
     } catch (error) {
-      setNotice({ tone: "error", message: toGuidedError(error, "稍后重试生成，或手动编辑草稿") });
+      setNotice({ tone: "error", message: toGuidedError(error, "Retry generation later, or edit the draft manually.") });
     } finally {
       setBusy(false);
     }
@@ -528,28 +528,28 @@ export default function RulesPage() {
   async function handlePublish(versionId: string) {
     const target = versions.find((row) => row.id === versionId);
     if (!target) {
-      setNotice({ tone: "error", message: "未找到要发布的版本，请刷新列表后重试。" });
+      setNotice({ tone: "error", message: "Target version not found. Refresh the list and try again." });
       return;
     }
 
     const diff = buildRuleDiffSummary(published?.payload ?? null, target.payload);
     const confirmed = window.confirm(
-      `确认发布 v${target.version_number}？\n\n新增: ${diff.added}\n删除: ${diff.removed}\n变更: ${diff.changed}\n不变: ${diff.unchanged}`
+      `Publish v${target.version_number}?\n\nAdded: ${diff.added}\nRemoved: ${diff.removed}\nChanged: ${diff.changed}\nUnchanged: ${diff.unchanged}`
     );
     if (!confirmed) {
       return;
     }
 
     setBusy(true);
-    setNotice({ tone: "info", message: `正在发布 v${target.version_number}...` });
+    setNotice({ tone: "info", message: `Publishing v${target.version_number}...` });
     try {
       await publishRuleVersion(versionId);
       await refreshVersions();
       const current = await getCurrentRule().catch(() => null);
       setCurrentPublished(current);
-      setNotice({ tone: "success", message: `版本 v${target.version_number} 已发布。` });
+      setNotice({ tone: "success", message: `Version v${target.version_number} published.` });
     } catch (error) {
-      setNotice({ tone: "error", message: toGuidedError(error, "确认版本状态后重试发布") });
+      setNotice({ tone: "error", message: toGuidedError(error, "Confirm version status and retry publish.") });
     } finally {
       setBusy(false);
     }
@@ -590,34 +590,34 @@ export default function RulesPage() {
     <div className="page-wrap grid gap-5">
       <section className="panel p-5 md:p-6">
         <SectionHeader
-          title="字段规则工作台"
-          subtitle="手工编辑或 Copilot 生成后，都需人工校验并发布。"
+          title="Field Rules Workbench"
+          subtitle="Whether edited manually or generated by Copilot, rules must be manually validated and published."
           right={
             <div className="flex flex-wrap items-center gap-2">
-              {published ? <StatusBadge label={`已发布 v${published.version_number}`} tone="done" /> : null}
-              <StatusBadge label={isDirty ? "未保存修改" : "已同步"} tone={isDirty ? "running" : "done"} />
+              {published ? <StatusBadge label={`Published v${published.version_number}`} tone="done" /> : null}
+              <StatusBadge label={isDirty ? "Unsaved changes" : "Synced"} tone={isDirty ? "running" : "done"} />
             </div>
           }
         />
 
         <div className="mt-4 grid gap-3 lg:grid-cols-[1.4fr_1fr]">
           <div className="panel-soft p-3">
-            <p className="m-0 text-xs font-semibold">Copilot Prompt（可选）</p>
+            <p className="m-0 text-xs font-semibold">Copilot Prompt (Optional)</p>
             <textarea
               className="mt-2 h-28 w-full rounded-lg border border-white/20 bg-black/35 p-2 text-sm"
               value={copilotPrompt}
               onChange={(event) => setCopilotPrompt(event.target.value)}
-              placeholder="例如：优先关注防护等级和眩光控制，软约束尽量覆盖能效指标。"
+              placeholder="Example: prioritize ingress protection and glare control; let soft constraints cover efficiency metrics as much as possible."
               maxLength={MAX_COPILOT_PROMPT_CHARS}
             />
             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
               <span className="muted-text">
-                已输入 {copilotPrompt.length}/{MAX_COPILOT_PROMPT_CHARS}
+                Input {copilotPrompt.length}/{MAX_COPILOT_PROMPT_CHARS}
               </span>
               <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge label={`当前模型: ${modelSettings?.current_model ?? "loading"}`} tone="active" />
+                <StatusBadge label={`Current model: ${modelSettings?.current_model ?? "loading"}`} tone="active" />
                 <StatusBadge
-                  label={modelSettings?.has_api_key ? "API Key 已配置" : "API Key 缺失"}
+                  label={modelSettings?.has_api_key ? "API key configured" : "API key missing"}
                   tone={modelSettings?.has_api_key ? "done" : "error"}
                 />
               </div>
@@ -628,33 +628,33 @@ export default function RulesPage() {
                 disabled={busy || !modelSettings?.has_api_key || copilotPrompt.length > MAX_COPILOT_PROMPT_CHARS}
                 variant="primary"
               >
-                Copilot 生成预览
+                Generate Copilot Preview
               </ActionButton>
               <ActionButton onClick={handleSaveDraft} disabled={busy || !isDirty} variant="success">
-                保存草稿
+                Save Draft
               </ActionButton>
               <ActionButton onClick={addRow} disabled={busy} variant="secondary">
-                新增规则行
+                Add Rule Row
               </ActionButton>
             </div>
           </div>
 
           <div className="panel-soft p-3">
-            <p className="m-0 text-xs font-semibold">LLM 实施摘要</p>
+            <p className="m-0 text-xs font-semibold">LLM Execution Summary</p>
             <p className="mt-2 text-xs muted-text">
-              仅展示 reasoning_summary。生成结束后只加载到编辑器，点击“保存草稿”才入库。
+              Shows reasoning_summary only. Generated output is loaded into the editor, and stored only after clicking "Save Draft".
             </p>
-            <pre className="json-box mt-2 max-h-36">{copilotReasoning || "暂无摘要"}</pre>
+            <pre className="json-box mt-2 max-h-36">{copilotReasoning || "No summary yet"}</pre>
             {copilotExecution ? (
               <p className="mt-2 text-xs muted-text">
-                状态: {copilotExecution.final_status} | 耗时: {copilotExecution.duration_ms ?? "-"}ms | 响应返回:{" "}
-                {copilotExecution.response_received ? "是" : "否"}
+                Status: {copilotExecution.final_status} | Duration: {copilotExecution.duration_ms ?? "-"}ms | Response received:{" "}
+                {copilotExecution.response_received ? "Yes" : "No"}
               </p>
             ) : null}
             {pendingCopilotLog ? (
-              <StatusBadge label="待保存 Copilot 日志" tone="running" className="mt-2" />
+              <StatusBadge label="Copilot log pending save" tone="running" className="mt-2" />
             ) : (
-              <StatusBadge label="当前为手工草稿" tone="idle" className="mt-2" />
+              <StatusBadge label="Current draft is manual" tone="idle" className="mt-2" />
             )}
           </div>
         </div>
@@ -664,71 +664,71 @@ export default function RulesPage() {
         <div className="mt-3 grid gap-3 md:grid-cols-3">
           <article className="info-card">
             <div className="info-card-top">
-              <span className="info-card-title">规则总数</span>
+              <span className="info-card-title">Rule Count</span>
               <StatusBadge label={`${draft.field_rules.length}`} tone="active" />
             </div>
             <div className="info-card-value">{draft.field_rules.length}</div>
-            <p className="info-card-subtitle">编辑器当前草稿行数</p>
+            <p className="info-card-subtitle">Current draft row count in editor</p>
           </article>
           <article className="info-card">
             <div className="info-card-top">
-              <span className="info-card-title">校验错误</span>
+              <span className="info-card-title">Validation Errors</span>
               <StatusBadge label={`${validation.errors.length}`} tone={validation.errors.length > 0 ? "error" : "done"} />
             </div>
             <div className="info-card-value">{validation.errors.length}</div>
-            <p className="info-card-subtitle">错误会阻止保存草稿</p>
+            <p className="info-card-subtitle">Errors block draft save</p>
           </article>
           <article className="info-card">
             <div className="info-card-top">
-              <span className="info-card-title">校验警告</span>
+              <span className="info-card-title">Validation Warnings</span>
               <StatusBadge label={`${validation.warnings.length}`} tone={validation.warnings.length > 0 ? "running" : "idle"} />
             </div>
             <div className="info-card-value">{validation.warnings.length}</div>
-            <p className="info-card-subtitle">警告不阻塞保存，但建议处理</p>
+            <p className="info-card-subtitle">Warnings do not block save, but should be addressed</p>
           </article>
         </div>
       </section>
 
       <section className="panel p-5 md:p-6">
         <SectionHeader
-          title="草稿编辑器"
-          subtitle="虚拟滚动仅渲染可视行，默认显示“仅错误/警告”。"
+          title="Draft Editor"
+          subtitle='Virtual scrolling renders visible rows only. Default view: "Errors / Warnings only".'
           right={
             <div className="flex flex-wrap items-center gap-2">
               <StatusBadge
                 label={
                   editorSourceVersionId
-                    ? `编辑来源: v${versions.find((row) => row.id === editorSourceVersionId)?.version_number ?? "custom"}`
-                    : "编辑来源: custom"
+                    ? `Source: v${versions.find((row) => row.id === editorSourceVersionId)?.version_number ?? "custom"}`
+                    : "Source: custom"
                 }
                 tone="active"
               />
-              <StatusBadge label={`视图: ${draftModeLabel(draftMode)}`} tone="running" />
+              <StatusBadge label={`View: ${draftModeLabel(draftMode)}`} tone="running" />
             </div>
           }
         />
 
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <ActionButton onClick={() => setDraftMode("issues")} variant={draftMode === "issues" ? "primary" : "ghost"}>
-            仅错误/警告
+            Errors / Warnings only
           </ActionButton>
           <ActionButton
             onClick={() => setDraftMode("modified")}
             variant={draftMode === "modified" ? "primary" : "ghost"}
           >
-            仅已修改
+            Modified only
           </ActionButton>
           <ActionButton onClick={() => setDraftMode("all")} variant={draftMode === "all" ? "primary" : "ghost"}>
-            全部
+            All
           </ActionButton>
           <span className="text-xs muted-text">
-            可见 {visibleRowIndices.length} / {draft.field_rules.length}
+            Visible {visibleRowIndices.length} / {draft.field_rules.length}
           </span>
         </div>
 
         {visibleRowIndices.length === 0 ? (
           <div className="mt-4">
-            <EmptyState title="当前视图无可见行" description="可切换到“全部”查看，或继续编辑后再筛选。" />
+            <EmptyState title="No Visible Rows in Current View" description='Switch to "All", or continue editing before filtering again.' />
           </div>
         ) : (
           <div
@@ -745,26 +745,26 @@ export default function RulesPage() {
               return (
                 <article key={`draft-row-${index}`} className="timeline-item mb-3" style={{ minHeight: `${DRAFT_ROW_HEIGHT - 16}px` }}>
                   <div className="timeline-item-header">
-                    <div className="timeline-item-title">
-                      <span className="timeline-item-index">{index + 1}</span>
-                      <div>
-                        <h3 className="m-0 text-sm font-semibold">规则行 #{index + 1}</h3>
-                        <p className="m-0 mt-1 text-xs muted-text">建议字段格式：`vw_bid_specs.xxx`</p>
-                      </div>
+                  <div className="timeline-item-title">
+                    <span className="timeline-item-index">{index + 1}</span>
+                    <div>
+                        <h3 className="m-0 text-sm font-semibold">Rule Row #{index + 1}</h3>
+                        <p className="m-0 mt-1 text-xs muted-text">Recommended field format: `vw_bid_specs.xxx`</p>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {modifiedRowIndices.has(index) ? <StatusBadge label="已修改" tone="running" /> : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                      {modifiedRowIndices.has(index) ? <StatusBadge label="Modified" tone="running" /> : null}
                       {issues.errors.length > 0 ? <StatusBadge label={`${issues.errors.length} error`} tone="error" /> : null}
                       {issues.warnings.length > 0 ? <StatusBadge label={`${issues.warnings.length} warning`} tone="running" /> : null}
                       <ActionButton onClick={() => removeRow(index)} disabled={busy} variant="danger">
-                        删除
+                        Delete
                       </ActionButton>
                     </div>
                   </div>
 
                   <div className="mt-3 grid gap-2 xl:grid-cols-6">
                     <label className="block text-xs text-slate-200 xl:col-span-2">
-                      字段名
+                      Field
                       <input
                         className="mt-1 w-full rounded-lg border border-white/20 bg-black/35 px-2 py-1.5 text-sm"
                         value={row.field}
@@ -774,7 +774,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="block text-xs text-slate-200">
-                      操作符
+                      Operator
                       <select
                         className="mt-1 w-full rounded-lg border border-white/20 bg-black/35 px-2 py-1.5 text-sm"
                         value={row.operator}
@@ -789,7 +789,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="block text-xs text-slate-200">
-                      约束类型
+                      Constraint Type
                       <select
                         className="mt-1 w-full rounded-lg border border-white/20 bg-black/35 px-2 py-1.5 text-sm"
                         value={row.is_hard ? "hard" : "soft"}
@@ -801,7 +801,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="block text-xs text-slate-200">
-                      操作符置信度
+                      Operator Confidence
                       <input
                         type="number"
                         min={0}
@@ -814,7 +814,7 @@ export default function RulesPage() {
                     </label>
 
                     <label className="block text-xs text-slate-200">
-                      硬度置信度
+                      Hardness Confidence
                       <input
                         type="number"
                         min={0}
@@ -830,20 +830,20 @@ export default function RulesPage() {
                   <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-black/20 px-3 py-2">
                     <div className="min-w-0">
                       <p className="m-0 text-xs muted-text">rationale</p>
-                      <p className="m-0 mt-1 truncate text-xs text-slate-200" title={rationaleText || "未填写"}>
-                        {rationaleText || "未填写"}
+                      <p className="m-0 mt-1 truncate text-xs text-slate-200" title={rationaleText || "Not filled"}>
+                        {rationaleText || "Not filled"}
                       </p>
                     </div>
                     <ActionButton onClick={() => openRationaleEditor(index)} variant="ghost">
-                      编辑说明
+                      Edit rationale
                     </ActionButton>
                   </div>
 
                   {issues.errors.length > 0 ? (
-                    <InlineNotice tone="error" message={issues.errors.join("；")} className="mt-3" />
+                    <InlineNotice tone="error" message={issues.errors.join("; ")} className="mt-3" />
                   ) : null}
                   {issues.warnings.length > 0 ? (
-                    <InlineNotice tone="warning" message={issues.warnings.join("；")} className="mt-3" />
+                    <InlineNotice tone="warning" message={issues.warnings.join("; ")} className="mt-3" />
                   ) : null}
                 </article>
               );
@@ -854,24 +854,24 @@ export default function RulesPage() {
         )}
 
         {rowIssues.get(-1)?.warnings.length ? (
-          <InlineNotice tone="warning" message={rowIssues.get(-1)?.warnings.join("；") ?? ""} className="mt-3" />
+          <InlineNotice tone="warning" message={rowIssues.get(-1)?.warnings.join("; ") ?? ""} className="mt-3" />
         ) : null}
       </section>
 
       <section className="panel p-5 md:p-6">
         <SectionHeader
-          title="版本历史"
-          subtitle="默认展示发布版本 + 最近记录，支持按状态/来源筛选并分页加载"
+          title="Version History"
+          subtitle="Shows published version + recent records by default. Supports status/source filtering with paginated loading."
           right={
             <ActionButton onClick={() => void refreshVersions()} disabled={versionsLoading} variant="ghost">
-              {versionsLoading ? "刷新中..." : "刷新列表"}
+              {versionsLoading ? "Refreshing..." : "Refresh list"}
             </ActionButton>
           }
         />
 
         <div className="mt-4 grid gap-2 lg:grid-cols-[12rem_12rem_1fr_auto]">
           <label className="text-xs text-slate-200">
-            状态
+            Status
             <select
               className="mt-1 w-full rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
               value={versionStatusFilter}
@@ -886,7 +886,7 @@ export default function RulesPage() {
           </label>
 
           <label className="text-xs text-slate-200">
-            来源
+            Source
             <select
               className="mt-1 w-full rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
               value={versionSourceFilter}
@@ -901,18 +901,18 @@ export default function RulesPage() {
           </label>
 
           <label className="text-xs text-slate-200">
-            关键词（ID/备注）
+            Keyword (ID/Note)
             <input
               className="mt-1 w-full rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
               value={versionKeyword}
               onChange={(event) => setVersionKeyword(event.target.value)}
-              placeholder="例如：manual / 版本ID"
+              placeholder="e.g. manual / version ID"
             />
           </label>
 
           <div className="flex items-end">
             <ActionButton onClick={clearVersionFilters} variant="secondary" className="w-full">
-              清空筛选
+              Clear filters
             </ActionButton>
           </div>
         </div>
@@ -928,75 +928,75 @@ export default function RulesPage() {
                 <div className="timeline-item-header">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="m-0 text-sm font-semibold">版本 v{version.version_number}</h3>
+                      <h3 className="m-0 text-sm font-semibold">Version v{version.version_number}</h3>
                       <StatusBadge label={version.status} tone={toneFromKeyword(version.status)} />
                       <StatusBadge label={version.source} tone={toneFromKeyword(version.source)} />
-                      {version.id === published?.id ? <StatusBadge label="当前发布" tone="done" /> : null}
+                      {version.id === published?.id ? <StatusBadge label="Current published" tone="done" /> : null}
                     </div>
-                    <p className="m-0 mt-1 text-xs muted-text">创建时间：{formatDateTime(version.created_at)}</p>
+                    <p className="m-0 mt-1 text-xs muted-text">Created at: {formatDateTime(version.created_at)}</p>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
                     <ActionButton onClick={() => loadVersionInEditor(version)} disabled={busy} variant="ghost">
-                      加载到编辑器
+                      Load into editor
                     </ActionButton>
                     {version.status !== "published" ? (
                       <ActionButton onClick={() => handlePublish(version.id)} disabled={busy} variant="warning">
-                        发布此版本
+                        Publish this version
                       </ActionButton>
                     ) : null}
                     <ActionButton onClick={() => toggleVersionExpanded(version.id)} variant="secondary">
-                      {expanded ? "收起详情" : "展开详情"}
+                      {expanded ? "Collapse details" : "Expand details"}
                     </ActionButton>
                   </div>
                 </div>
 
                 <div className="mt-3 grid gap-2 md:grid-cols-4 text-xs text-slate-200">
                   <div className="panel-soft p-2">
-                    新增字段 <strong>{diff.added}</strong>
+                    Added fields <strong>{diff.added}</strong>
                   </div>
                   <div className="panel-soft p-2">
-                    删除字段 <strong>{diff.removed}</strong>
+                    Removed fields <strong>{diff.removed}</strong>
                   </div>
                   <div className="panel-soft p-2">
-                    变更字段 <strong>{diff.changed}</strong>
+                    Changed fields <strong>{diff.changed}</strong>
                   </div>
                   <div className="panel-soft p-2">
-                    未变更 <strong>{diff.unchanged}</strong>
+                    Unchanged <strong>{diff.unchanged}</strong>
                   </div>
                 </div>
 
                 {expanded ? (
                   <div className="mt-3 grid gap-2 md:grid-cols-3 text-xs text-slate-200">
                     <div className="panel-soft p-2">
-                      校验错误 <strong>{validationErrors}</strong>
+                      Validation errors <strong>{validationErrors}</strong>
                     </div>
                     <div className="panel-soft p-2">
-                      校验警告 <strong>{validationWarnings}</strong>
+                      Validation warnings <strong>{validationWarnings}</strong>
                     </div>
                     <div className="panel-soft p-2">
-                      规则条目 <strong>{version.payload.field_rules.length}</strong>
+                      Rule entries <strong>{version.payload.field_rules.length}</strong>
                     </div>
                     <div className="panel-soft p-2 md:col-span-3">
-                      备注：{version.note?.trim() || "（无）"}
+                      Note: {version.note?.trim() || "(none)"}
                     </div>
                     <div className="panel-soft p-2 md:col-span-3">
-                      版本 ID：
+                      Version ID:
                       <span className="ml-1 font-mono">{version.id}</span>
                     </div>
                     {version.copilot_log ? (
                       <>
                         <div className="panel-soft p-2">
-                          Copilot 模型 <strong>{version.copilot_log.model}</strong>
+                          Copilot model <strong>{version.copilot_log.model}</strong>
                         </div>
                         <div className="panel-soft p-2 md:col-span-2">
-                          Copilot Prompt：
-                          <span className="ml-1">{version.copilot_log.prompt || "（空）"}</span>
+                          Copilot Prompt:
+                          <span className="ml-1">{version.copilot_log.prompt || "(empty)"}</span>
                         </div>
                         <div className="panel-soft p-2 md:col-span-3">
                           <p className="m-0 text-xs muted-text">reasoning_summary</p>
                           <pre className="json-box mt-2 max-h-32">
-                            {version.copilot_log.reasoning_summary || "（无）"}
+                            {version.copilot_log.reasoning_summary || "(none)"}
                           </pre>
                         </div>
                       </>
@@ -1008,19 +1008,19 @@ export default function RulesPage() {
           })}
 
           {versionsEmpty ? (
-            <EmptyState title="暂无版本" description="先保存一份草稿，版本历史会自动出现。" />
+            <EmptyState title="No Versions Yet" description="Save a draft first and version history will appear automatically." />
           ) : null}
         </div>
 
         {!versionsEmpty ? (
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs muted-text">已加载 {versions.length} 条版本记录</p>
+            <p className="text-xs muted-text">Loaded {versions.length} version record(s)</p>
             {versionsHasMore ? (
               <ActionButton onClick={() => void loadMoreVersions()} disabled={versionsLoadingMore} variant="secondary">
-                {versionsLoadingMore ? "加载中..." : "加载更多"}
+                {versionsLoadingMore ? "Loading..." : "Load more"}
               </ActionButton>
             ) : (
-              <span className="text-xs muted-text">已到末页</span>
+              <span className="text-xs muted-text">End of list</span>
             )}
           </div>
         ) : null}
@@ -1030,21 +1030,21 @@ export default function RulesPage() {
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/65 p-4">
           <div className="panel w-full max-w-2xl p-5">
             <SectionHeader
-              title={`编辑 rationale（第 ${rationaleEditorIndex + 1} 行）`}
-              subtitle="默认折叠展示，编辑后会立即写回草稿。"
+              title={`Edit rationale (row ${rationaleEditorIndex + 1})`}
+              subtitle="Collapsed by default. Changes are written back to draft immediately."
             />
             <textarea
               className="mt-4 h-48 w-full rounded-lg border border-white/20 bg-black/35 p-3 text-sm"
               value={rationaleEditorValue}
               onChange={(event) => setRationaleEditorValue(event.target.value)}
-              placeholder="说明这条规则的来源和业务意图"
+              placeholder="Describe the source and business intent of this rule"
             />
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <ActionButton onClick={() => setRationaleEditorIndex(null)} variant="ghost">
-                取消
+                Cancel
               </ActionButton>
               <ActionButton onClick={applyRationaleEditor} variant="success">
-                保存说明
+                Save rationale
               </ActionButton>
             </div>
           </div>

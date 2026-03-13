@@ -14,7 +14,7 @@ import { ActionButton, EmptyState, InlineNotice, SectionHeader, StatusBadge } fr
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), {
   ssr: false,
-  loading: () => <div className="stats-chart-loading">图表加载中...</div>,
+  loading: () => <div className="stats-chart-loading">Loading chart...</div>,
 }) as typeof import("echarts-for-react").default;
 
 type NoticeTone = "info" | "success" | "warning" | "error";
@@ -25,9 +25,9 @@ interface NoticeState {
 }
 
 const DAY_OPTIONS: Array<{ label: string; value: 7 | 30 | 90 }> = [
-  { label: "7 天", value: 7 },
-  { label: "30 天", value: 30 },
-  { label: "90 天", value: 90 },
+  { label: "7 days", value: 7 },
+  { label: "30 days", value: 30 },
+  { label: "90 days", value: 90 },
 ];
 
 const TOP_N_OPTIONS: Array<{ label: string; value: 20 | 40 | 60 }> = [
@@ -57,7 +57,7 @@ export default function StatsPage() {
   const [dashboard, setDashboard] = useState<StatsDashboardResponse | null>(null);
   const [notice, setNotice] = useState<NoticeState>({
     tone: "info",
-    message: "设置筛选条件后会自动刷新统计数据。",
+    message: "Statistics refresh automatically when filters change.",
   });
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
 
@@ -74,18 +74,18 @@ export default function StatsPage() {
     let active = true;
     async function run() {
       setLoading(true);
-      setNotice({ tone: "info", message: "正在加载统计数据..." });
+      setNotice({ tone: "info", message: "Loading statistics..." });
       try {
         const payload = await getStatsDashboard(query);
         if (!active) return;
         setDashboard(payload);
         setLastUpdatedAt(new Date().toISOString());
-        setNotice({ tone: "success", message: "统计数据已更新。" });
+        setNotice({ tone: "success", message: "Statistics updated." });
       } catch (error) {
         if (!active) return;
         setNotice({
           tone: "error",
-          message: toGuidedError(error, "检查 backend 服务和数据库连接后重试"),
+          message: toGuidedError(error, "Check backend service and database connection, then retry"),
         });
       } finally {
         if (active) setLoading(false);
@@ -113,19 +113,19 @@ export default function StatsPage() {
     <div className="page-wrap grid gap-5">
       <section className="panel p-5 md:p-6">
         <SectionHeader
-          title="统计分析面板"
-          subtitle="图表优先展示任务耗时、步骤分布、抽取规模与字段频率。"
+          title="Analytics Dashboard"
+          subtitle="Chart-first view of job duration, step distribution, extraction scale, and field frequency."
           right={
             <>
               <StatusBadge label={loading ? "loading" : "ready"} tone={loading ? "running" : "done"} />
-              <StatusBadge label={`最近更新: ${formatDateTime(lastUpdatedAt)}`} tone="active" />
+              <StatusBadge label={`Last updated: ${formatDateTime(lastUpdatedAt)}`} tone="active" />
             </>
           }
         />
 
         <div className="mt-4 grid gap-2 lg:grid-cols-[9rem_9rem_9rem_auto]">
           <label className="text-xs text-slate-200">
-            时间窗口
+            Time window
             <select
               className="mt-1 w-full rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
               value={days}
@@ -140,7 +140,7 @@ export default function StatsPage() {
           </label>
 
           <label className="text-xs text-slate-200">
-            字段热力 Top N
+            Field heatmap Top N
             <select
               className="mt-1 w-full rounded-lg border border-white/20 bg-black/30 px-2 py-1.5 text-xs"
               value={topN}
@@ -155,7 +155,7 @@ export default function StatsPage() {
           </label>
 
           <label className="text-xs text-slate-200">
-            任务范围
+            Job scope
             <div className="mt-1 flex h-[34px] items-center rounded-lg border border-white/20 bg-black/30 px-3">
               <input
                 id="include-failed"
@@ -164,14 +164,14 @@ export default function StatsPage() {
                 onChange={(event) => setIncludeFailed(event.target.checked)}
               />
               <label htmlFor="include-failed" className="ml-2 text-xs text-slate-200">
-                计入 failed
+                Include failed
               </label>
             </div>
           </label>
 
           <div className="flex items-end">
             <ActionButton onClick={() => setRefreshToken((prev) => prev + 1)} disabled={loading} variant="secondary" className="w-full">
-              {loading ? "刷新中..." : "刷新统计"}
+              {loading ? "Refreshing..." : "Refresh stats"}
             </ActionButton>
           </div>
         </div>
@@ -182,17 +182,17 @@ export default function StatsPage() {
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <article className="info-card">
           <div className="info-card-top">
-            <span className="info-card-title">任务总数</span>
+            <span className="info-card-title">Total Jobs</span>
             <StatusBadge label={`${dashboard?.overview.job_count ?? 0}`} tone="active" />
           </div>
           <div className="info-card-value">{dashboard?.overview.job_count ?? 0}</div>
           <p className="info-card-subtitle">
-            成功 {dashboard?.overview.succeeded_count ?? 0} / 失败 {dashboard?.overview.failed_count ?? 0}
+            Succeeded {dashboard?.overview.succeeded_count ?? 0} / Failed {dashboard?.overview.failed_count ?? 0}
           </p>
         </article>
         <article className="info-card">
           <div className="info-card-top">
-            <span className="info-card-title">平均任务耗时</span>
+            <span className="info-card-title">Average Job Duration</span>
             <StatusBadge label="avg" tone="running" />
           </div>
           <div className="info-card-value">
@@ -207,27 +207,27 @@ export default function StatsPage() {
         </article>
         <article className="info-card">
           <div className="info-card-top">
-            <span className="info-card-title">平均抽取产品数</span>
+            <span className="info-card-title">Average Extracted Products</span>
             <StatusBadge label="step2" tone="active" />
           </div>
           <div className="info-card-value">{formatNumber(dashboard?.overview.avg_extracted_products, 2)}</div>
-          <p className="info-card-subtitle">统计窗口内每个 job 的 step2 抽取数量</p>
+          <p className="info-card-subtitle">Step2 extracted product count per job in this time window</p>
         </article>
         <article className="info-card">
           <div className="info-card-top">
-            <span className="info-card-title">窗口范围</span>
+            <span className="info-card-title">Window Range</span>
             <StatusBadge label={`${days}d`} tone="done" />
           </div>
           <div className="info-card-value text-base">{formatDateTime(dashboard?.overview.window_from ?? null)}</div>
-          <p className="info-card-subtitle">至 {formatDateTime(dashboard?.overview.window_to ?? null)}</p>
+          <p className="info-card-subtitle">to {formatDateTime(dashboard?.overview.window_to ?? null)}</p>
         </article>
       </section>
 
       <section className="panel p-5 md:p-6">
-        <SectionHeader title="Job 总耗时分布" subtitle="横向柱状图（按更新时间排序，支持 dataZoom）。" />
+        <SectionHeader title="Job Total Duration Distribution" subtitle="Horizontal bar chart (sorted by update time, supports dataZoom)." />
         {durationJobs.length === 0 ? (
           <div className="mt-3">
-            <EmptyState title="暂无任务样本" description="当前筛选条件下没有可用于总耗时统计的任务。" />
+            <EmptyState title="No Job Samples" description="No jobs with total duration are available for the current filters." />
           </div>
         ) : (
           <div className="stats-chart-shell mt-3">
@@ -237,10 +237,10 @@ export default function StatsPage() {
       </section>
 
       <section className="panel p-5 md:p-6">
-        <SectionHeader title="Step 耗时分布对比" subtitle="分组柱状图：avg / p50 / p90。" />
+        <SectionHeader title="Step Duration Distribution" subtitle="Grouped bar chart: avg / p50 / p90." />
         {stepRows.length === 0 ? (
           <div className="mt-3">
-            <EmptyState title="暂无步骤耗时数据" description="当前样本不足，尚无法展示步骤耗时分布。" />
+            <EmptyState title="No Step Duration Data" description="The current sample set is too small to render step duration distribution." />
           </div>
         ) : (
           <div className="stats-chart-shell mt-3">
@@ -250,10 +250,10 @@ export default function StatsPage() {
       </section>
 
       <section className="panel p-5 md:p-6">
-        <SectionHeader title="抽取产品数量分布" subtitle="柱状图（逐 job 的 step2 抽取数量）。" />
+        <SectionHeader title="Extracted Product Count Distribution" subtitle="Bar chart of Step2 extracted product counts by job." />
         {extractedJobs.length === 0 ? (
           <div className="mt-3">
-            <EmptyState title="暂无抽取样本" description="当前筛选条件下没有 step2 抽取数据。" />
+            <EmptyState title="No Extraction Samples" description="No Step2 extraction data is available for the current filters." />
           </div>
         ) : (
           <div className="stats-chart-shell mt-3">
@@ -263,10 +263,10 @@ export default function StatsPage() {
       </section>
 
       <section className="panel p-5 md:p-6">
-        <SectionHeader title="数据库参数频率热力图" subtitle={`按字段出现次数排序，当前展示 Top ${topN}。`} />
+        <SectionHeader title="Database Field Frequency Heatmap" subtitle={`Sorted by field occurrence count, currently showing Top ${topN}.`} />
         {fieldRows.length === 0 ? (
           <div className="mt-3">
-            <EmptyState title="暂无字段频率数据" description="请先执行包含 step2 参数抽取的任务。" />
+            <EmptyState title="No Field Frequency Data" description="Run jobs with Step2 parameter extraction first." />
           </div>
         ) : (
           <div className="stats-chart-shell mt-3">
