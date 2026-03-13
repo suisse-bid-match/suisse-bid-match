@@ -21,6 +21,10 @@ def _to_float(value: Any) -> float | None:
     return None
 
 
+def _is_unknown_numeric(value: float) -> bool:
+    return abs(value) < 1e-12
+
+
 def _eval(requirement: dict, row: dict) -> tuple[bool, bool]:
     field = requirement.get("field")
     operator = requirement.get("operator")
@@ -35,11 +39,13 @@ def _eval(requirement: dict, row: dict) -> tuple[bool, bool]:
         return False, False
 
     if operator in {"bool_true", "bool_false"}:
-        expected = "1" if operator == "bool_true" else "0"
-        return str(row_value).strip().lower() in {expected, "true" if expected == "1" else "false"}, True
+        # Bool constraints are intentionally not used in current rule strategy.
+        return False, False
 
     left_num = _to_float(row_value)
     if operator in {"eq", "gte", "lte", "gt", "lt", "between", "in"} and left_num is not None:
+        if _is_unknown_numeric(left_num):
+            return False, False
         if operator == "between":
             if not isinstance(value, list) or len(value) != 2:
                 return False, False
@@ -133,10 +139,10 @@ def build_fallback_step7(step4_data: dict, step6_data: dict) -> dict:
             )
         scored.sort(key=lambda item: (item["soft_match_score"], item["matched_soft_count"]), reverse=True)
 
-        ranked_candidates: list[dict] = []
+        candidates: list[dict] = []
         for rank, item in enumerate(scored, start=1):
             row = item["row"]
-            ranked_candidates.append(
+            candidates.append(
                 {
                     "rank": rank,
                     "db_product_id": row.get("product_id"),
@@ -152,6 +158,5 @@ def build_fallback_step7(step4_data: dict, step6_data: dict) -> dict:
                 }
             )
 
-        match_results.append({"product_key": product_key, "ranked_candidates": ranked_candidates})
+        match_results.append({"product_key": product_key, "candidates": candidates})
     return {"match_results": match_results}
-

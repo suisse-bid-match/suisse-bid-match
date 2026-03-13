@@ -1,33 +1,69 @@
 from __future__ import annotations
 
-import subprocess
+import os
 from time import perf_counter
 from typing import Any
 
+import pymysql
 
-def run_mysql_query(container: str, user: str, password: str, database: str, sql: str) -> tuple[str, int]:
-    cmd = [
-        "docker",
-        "exec",
-        container,
-        "mysql",
-        f"-u{user}",
-        f"-p{password}",
-        "-D",
-        database,
-        "--batch",
-        "--raw",
-        "-e",
-        sql,
-    ]
+
+
+def _connection_settings(host_or_container: str, user: str, password: str, database: str) -> tuple[str, int, str, str, str]:
+    host = os.getenv("PIM_MYSQL_HOST", host_or_container)
+    port = int(os.getenv("PIM_MYSQL_PORT", "3306"))
+    resolved_user = os.getenv("PIM_MYSQL_USER", user)
+    resolved_password = os.getenv("PIM_MYSQL_PASSWORD", password)
+    resolved_database = os.getenv("PIM_MYSQL_DB", database)
+    return host, port, resolved_user, resolved_password, resolved_database
+
+
+
+def _to_tsv(cursor: pymysql.cursors.Cursor, rows: list[tuple[Any, ...]]) -> str:
+    headers = [str(column[0]).strip().lower() for column in (cursor.description or [])]
+    if not headers:
+        return ""
+    lines = ["\t".join(headers)]
+    for row in rows:
+        values: list[str] = []
+        for item in row:
+            if item is None:
+                values.append("NULL")
+            else:
+                values.append(str(item))
+        lines.append("\t".join(values))
+    return "\n".join(lines) + "\n"
+
+
+
+def run_mysql_query(host_or_container: str, user: str, password: str, database: str, sql: str) -> tuple[str, int]:
+    host, port, resolved_user, resolved_password, resolved_database = _connection_settings(
+        host_or_container, user, password, database
+    )
     start = perf_counter()
-    result = subprocess.run(cmd, capture_output=True, text=False, check=False)
-    elapsed_ms = int((perf_counter() - start) * 1000)
-    stdout = result.stdout.decode("utf-8", errors="replace")
-    stderr = result.stderr.decode("utf-8", errors="replace")
-    if result.returncode != 0:
-        raise RuntimeError(f"MySQL query failed: {stderr.strip()}")
-    return stdout, elapsed_ms
+    connection: pymysql.connections.Connection | None = None
+    try:
+        connection = pymysql.connect(
+            host=host,
+            port=port,
+            user=resolved_user,
+            password=resolved_password,
+            database=resolved_database,
+            charset="utf8mb4",
+            autocommit=True,
+            cursorclass=pymysql.cursors.Cursor,
+        )
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            rows = list(cursor.fetchall())
+            output = _to_tsv(cursor, rows)
+    except Exception as exc:
+        raise RuntimeError(f"MySQL query failed: {exc}") from exc
+    finally:
+        elapsed_ms = int((perf_counter() - start) * 1000)
+        if connection is not None:
+            connection.close()
+    return output, elapsed_ms
+
 
 
 def parse_mysql_tsv(output: str) -> list[dict[str, Any]]:
@@ -42,8 +78,9 @@ def parse_mysql_tsv(output: str) -> list[dict[str, Any]]:
     return rows
 
 
+
 def fetch_schema_metadata(
-    container: str,
+    host_or_container: str,
     user: str,
     password: str,
     database: str,
@@ -58,7 +95,7 @@ def fetch_schema_metadata(
         f"WHERE table_schema = '{database}' AND table_name IN ({table_list}) "
         "ORDER BY table_name, ordinal_position"
     )
-    output, _ = run_mysql_query(container, user, password, database, sql)
+    output, _ = run_mysql_query(host_or_container, user, password, database, sql)
     rows = parse_mysql_tsv(output)
     table_map: dict[str, list[dict[str, str]]] = {}
     for row in rows:
@@ -69,4 +106,3 @@ def fetch_schema_metadata(
             continue
         table_map.setdefault(table_name, []).append({"name": column_name, "type": data_type})
     return {"tables": [{"name": table_name, "columns": columns} for table_name, columns in table_map.items()]}
-

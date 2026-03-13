@@ -24,7 +24,7 @@ class TestStep4Merge(unittest.TestCase):
                     "requirements": [
                         {
                             "requirement_id": "item_001.req_0001",
-                            "field": "match_specs.ugr",
+                            "field": "vw_bid_specs.ugr",
                             "value": 19,
                             "unit": None,
                             "source": None,
@@ -32,7 +32,7 @@ class TestStep4Merge(unittest.TestCase):
                         },
                         {
                             "requirement_id": "item_001.req_0002",
-                            "field": "match_specs.cri",
+                            "field": "vw_bid_specs.cri",
                             "value": 80,
                             "unit": None,
                             "source": None,
@@ -47,7 +47,7 @@ class TestStep4Merge(unittest.TestCase):
                     "requirements": [
                         {
                             "requirement_id": "item_002.req_0001",
-                            "field": "match_specs.ugr",
+                            "field": "vw_bid_specs.ugr",
                             "value": 22,
                             "unit": None,
                             "source": None,
@@ -60,7 +60,7 @@ class TestStep4Merge(unittest.TestCase):
         step3_data = {
             "field_rules": [
                 {
-                    "field": "match_specs.ugr",
+                    "field": "vw_bid_specs.ugr",
                     "operator": "lte",
                     "is_hard": True,
                     "operator_confidence": 0.95,
@@ -81,10 +81,9 @@ class TestStep4Merge(unittest.TestCase):
 
         skipped = validated["skipped_requirements"]
         self.assertEqual(len(skipped), 1)
-        self.assertEqual(skipped[0]["field"], "match_specs.cri")
+        self.assertEqual(skipped[0]["field"], "vw_bid_specs.cri")
         self.assertEqual(skipped[0]["reason"], "missing_step3_field_rule")
 
 
 if __name__ == "__main__":
     unittest.main()
-

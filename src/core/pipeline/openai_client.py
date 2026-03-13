@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterator
 
 import requests
 
@@ -13,6 +13,13 @@ def _should_disable_json_format(resp: requests.Response) -> bool:
         return False
     text = (resp.text or "").lower()
     return any(marker in text for marker in ("text.format", "response_format", "json_object", "json_schema"))
+
+
+def _should_disable_reasoning_options(resp: requests.Response) -> bool:
+    if resp.status_code not in {400, 422}:
+        return False
+    text = (resp.text or "").lower()
+    return "reasoning" in text and any(marker in text for marker in ("summary", "effort", "unsupported"))
 
 
 def _request_with_retries(
@@ -180,6 +187,7 @@ def call_responses(
     tools: list[dict] | None = None,
     include: list[str] | None = None,
     json_mode: bool = True,
+    on_stream_event: Callable[[dict[str, Any]], None] | None = None,
 ) -> dict:
     url = f"{base_url.rstrip('/')}/responses"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -204,30 +212,153 @@ def call_responses(
         payload_base["include"] = include
 
     use_json_format = bool(json_mode)
+    use_reasoning_options = True
+    use_stream = True
     last_error: Exception | None = None
     for attempt in range(4):
         payload = dict(payload_base)
         if use_json_format:
             payload["text"] = {"format": {"type": "json_object"}}
+        if use_reasoning_options:
+            payload["reasoning"] = {"effort": "medium", "summary": "auto"}
+        if use_stream:
+            payload["stream"] = True
         try:
-            resp = requests.post(url, headers=headers, json=payload, timeout=600)
+            resp = requests.post(url, headers=headers, json=payload, timeout=600, stream=use_stream)
         except requests.RequestException as exc:
             last_error = exc
             time.sleep(2**attempt)
             continue
         if resp.status_code in {429, 500, 502, 503, 504}:
+            resp.close()
             time.sleep(2**attempt)
             continue
         if resp.status_code >= 400:
             if use_json_format and _should_disable_json_format(resp):
+                resp.close()
                 use_json_format = False
                 continue
+            if use_reasoning_options and _should_disable_reasoning_options(resp):
+                resp.close()
+                use_reasoning_options = False
+                continue
+            resp.close()
             raise RuntimeError(f"responses call failed: {resp.status_code} {resp.text}")
+        if use_stream:
+            try:
+                return _consume_streaming_response(resp, on_stream_event=on_stream_event)
+            except Exception as exc:
+                resp.close()
+                last_error = exc
+                use_stream = False
+                time.sleep(2**attempt)
+                continue
         return resp.json()
 
     if last_error is not None:
         raise RuntimeError(f"responses call failed after retries: {last_error}") from last_error
     raise RuntimeError("responses call failed after retries")
+
+
+def _iter_sse_events(resp: requests.Response) -> Iterator[tuple[str, dict[str, Any]]]:
+    event_name = "message"
+    data_lines: list[str] = []
+    for raw_line in resp.iter_lines(decode_unicode=True):
+        if raw_line is None:
+            continue
+        line = raw_line.rstrip("\r")
+        if not line:
+            if not data_lines:
+                event_name = "message"
+                continue
+            data_raw = "\n".join(data_lines).strip()
+            data_lines = []
+            if data_raw == "[DONE]":
+                break
+            try:
+                payload = json.loads(data_raw)
+            except Exception:
+                payload = {"raw": data_raw}
+            yield event_name, payload
+            event_name = "message"
+            continue
+        if line.startswith(":"):
+            continue
+        if line.startswith("event:"):
+            event_name = line[6:].strip() or "message"
+            continue
+        if line.startswith("data:"):
+            data_lines.append(line[5:].strip())
+            continue
+    if data_lines:
+        data_raw = "\n".join(data_lines).strip()
+        if data_raw and data_raw != "[DONE]":
+            try:
+                payload = json.loads(data_raw)
+            except Exception:
+                payload = {"raw": data_raw}
+            yield event_name, payload
+
+
+def _notify_stream_event(event: dict[str, Any], *, on_stream_event: Callable[[dict[str, Any]], None] | None) -> None:
+    if on_stream_event is None:
+        return
+    kind = event.get("kind")
+    if not isinstance(kind, str):
+        return
+    on_stream_event(event)
+
+
+def _consume_streaming_response(
+    resp: requests.Response,
+    *,
+    on_stream_event: Callable[[dict[str, Any]], None] | None = None,
+) -> dict:
+    response_payload: dict[str, Any] | None = None
+    failed_payload: dict[str, Any] | None = None
+
+    for event_name, payload in _iter_sse_events(resp):
+        event_type = str(payload.get("type") or event_name or "message")
+
+        if event_type in {"response.created", "response.in_progress"}:
+            _notify_stream_event({"kind": "status", "status": event_type}, on_stream_event=on_stream_event)
+        if event_type in {"response.reasoning_summary_text.delta", "response.reasoning_summary.delta"}:
+            delta = payload.get("delta")
+            if isinstance(delta, str) and delta:
+                _notify_stream_event(
+                    {
+                        "kind": "reasoning_summary_delta",
+                        "event_type": event_type,
+                        "text": delta,
+                    },
+                    on_stream_event=on_stream_event,
+                )
+        if event_type in {"response.reasoning_summary_text.done", "response.reasoning_summary.done"}:
+            text = payload.get("text")
+            if isinstance(text, str) and text:
+                _notify_stream_event(
+                    {
+                        "kind": "reasoning_summary",
+                        "event_type": event_type,
+                        "text": text,
+                    },
+                    on_stream_event=on_stream_event,
+                )
+        if event_type == "response.completed":
+            maybe_response = payload.get("response")
+            if isinstance(maybe_response, dict):
+                response_payload = maybe_response
+            elif isinstance(payload, dict) and isinstance(payload.get("output"), list):
+                response_payload = payload
+            _notify_stream_event({"kind": "status", "status": "response.completed"}, on_stream_event=on_stream_event)
+        if event_type == "response.failed":
+            failed_payload = payload
+
+    if failed_payload is not None:
+        raise RuntimeError(f"responses streaming failed: {json.dumps(failed_payload, ensure_ascii=False)}")
+    if response_payload is None:
+        raise RuntimeError("responses streaming completed without response payload")
+    return response_payload
 
 
 def _iter_output_texts(response: dict):
@@ -290,4 +421,3 @@ def extract_output_json(response: dict) -> dict:
     if last_error:
         raise RuntimeError(f"No valid output JSON found in response: {last_error}") from last_error
     raise RuntimeError("No output_text JSON found in response")
-

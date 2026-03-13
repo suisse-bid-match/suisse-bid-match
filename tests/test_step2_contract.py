@@ -16,7 +16,7 @@ class TestStep2Contract(unittest.TestCase):
         return {
             "tables": [
                 {
-                    "name": "match_specs",
+                    "name": "vw_bid_specs",
                     "columns": [{"name": "ugr", "type": "double"}],
                 }
             ]
@@ -29,8 +29,8 @@ class TestStep2Contract(unittest.TestCase):
                 {
                     "product_key": "item_001",
                     "requirements": [
-                        {"field": "match_specs.ugr", "value": 19, "unit": None, "source": None, "extraction_confidence": 0.9},
-                        {"field": "match_specs.ugr", "value": 20, "unit": None, "source": None, "extraction_confidence": 0.8},
+                        {"field": "vw_bid_specs.ugr", "value": 19, "unit": None, "source": None, "extraction_confidence": 0.9},
+                        {"field": "vw_bid_specs.ugr", "value": 20, "unit": None, "source": None, "extraction_confidence": 0.8},
                     ],
                 }
             ],
@@ -46,7 +46,7 @@ class TestStep2Contract(unittest.TestCase):
                     "product_key": "item_001",
                     "requirements": [
                         {
-                            "field": "match_specs.ugr",
+                            "field": "vw_bid_specs.ugr",
                             "value": 19,
                             "unit": None,
                             "source": None,
@@ -60,7 +60,35 @@ class TestStep2Contract(unittest.TestCase):
         with self.assertRaises(Exception):
             validate_step2_data(payload)
 
+    def test_accepts_llm_execution_summary(self):
+        payload = {
+            "schema_snapshot": self._schema(),
+            "tender_products": [
+                {
+                    "product_key": "item_001",
+                    "requirements": [
+                        {"field": "vw_bid_specs.ugr", "value": 19, "unit": None, "source": None, "extraction_confidence": 0.9}
+                    ],
+                }
+            ],
+            "llm_execution": {
+                "step_name": "step2_extract_requirements",
+                "request_started_at": "2026-03-13T20:00:00Z",
+                "request_finished_at": "2026-03-13T20:00:01Z",
+                "duration_ms": 1000,
+                "final_status": "succeeded",
+                "response_received": True,
+                "fallback_used": False,
+                "failure_message": None,
+                "reasoning_summary": "ok",
+                "reasoning_chars": 2,
+                "stream_event_counts": {"reasoning_summary_delta": 1},
+                "status_events": ["llm_request_started", "llm_response_received"],
+            },
+        }
+        normalized = validate_step2_data(payload)
+        self.assertEqual(normalized["llm_execution"]["step_name"], "step2_extract_requirements")
+
 
 if __name__ == "__main__":
     unittest.main()
-

@@ -1,0 +1,73 @@
+I want to create an "end-to-end matching" project for lighting fixture bidding scenarios. Specifically, it matches the lighting fixtures required in the bid with those available from supplier companies by comparing their technical parameters. This primarily relies on the capabilities of the OpenAI API (LLM), and involves a multi-step process of requesting the LLM.
+
+In this process, I provide inputs to the LLM, which generates outputs that I use for subsequent requests.
+
+The OpenAI API key (used for subsequent LLM requests), model selection, and supplier product database configuration information (primarily `vw_bid_products` and `vw_bid_specs`, containing all technical parameters) can all be found in the `.env` file.
+
+The multi-step request process is as follows (including both LLM and non-LLM steps):
+
+{
+    "step1(LLM)": {
+
+        "input": "We have a knowledge base folder called `upload_corpus_kb` that needs to be uploaded to the OpenAI vector store, containing professional knowledge about the Swiss lighting industry."
+
+        "task": "First, check if the vector store already has the corresponding knowledge base. If not, upload it; otherwise, proceed to the next step." },
+
+        "step2(LLM)": {
+
+        "input": "The tender folder contains the tender requirements document for lighting fixtures, and the schemas of the two tables `vw_bid_products` and `vw_bid_specs` in the database (containing all field information) (also in JSON format; if not available, query the database schema via code and then convert it to JSON)",
+
+        "output": "Extract the relevant parameter information for multiple lighting fixtures required in the tender, such as model, quantity, and technical parameters. Only extract the parameter name and parameter value (or range). The parameter name needs to be aligned with the database schema (written in the form of `table.field` for easy construction of SQL statements later). Output it as JSON."
+
+        "note": "Allow LLM to use web search and file search (searching the knowledge base just reviewed) to obtain information."
+
+    },
+
+    "step3(LLM)": {
+
+        "input": "The schemas of the two tables `vw_bid_products` and `vw_bid_specs` in the database (containing all field information) (also in JSON format; if not available, query the database schema via code and then convert it to JSON)",
+
+        "output": "Determine the hard and soft constraints in the bidding process: which parameters (fields) must be met, and which can be slightly deviated from. Use an `is_hard` parameter to indicate whether it's a hard constraint. Try to set the requirements as lenient as possible, only making the most important ones hard constraints. This is because we will need to use hard constraints to write SQL queries to the database later. Our goal is to filter a portion of the data, not to directly select a product. Fewer hard constraints will help us find more candidate products, but at the same time, we must ensure that the truly hard constraints are not ignored."
+
+        "Note": "Allow LLM to use web search and file search (searching the knowledge base) capabilities to obtain information."
+
+    },
+
+    "step4": {
+
+        "input": "Output of step2, output of step3",
+
+        "output": "Using the database fields in the step3 output as keys, match the corresponding fields in the step2 output, and then directly patch the soft and hard constraint judgment results into it. This output can be seen as a fusion of the outputs of step2 and 3."
+
+        "Note": "No LLM is needed; this step can be completed solely through string matching and JSON addition operations."
+
+    }
+
+    "step5": {
+
+        "input": "Output of step4",
+
+        "output": "Find all hard constraint parameters, write SQL queries based on them, and retrieve all products from the database that satisfy these hard constraints. Since there are multiple required products in the bid, there will be a corresponding number of SQL statements here."
+
+        "Note": "No LLM is needed; this step only requires JSON manipulation, string matching, and SQL template creation."
+
+    }
+    "Step 6": {
+
+        "Input": "Output from Step 5",
+
+        "Output": "The results returned after executing the SQL statements; concatenate the results into the input."
+
+        "Note": "No LLM is needed."
+
+    }
+    "Step 7 (LLM)": {
+
+        "Input": "Output from Step 6 and Step 4",
+
+        "Output": "With the set of candidate supplier products selected from the hard constraints, we want to determine which product is most suitable for the requirements in the bid based on the soft constraints. The output is a sorted list of candidate products, sorted by the degree to which the soft constraints are satisfied (more satisfied products rank higher). It also outputs which soft constraints each product satisfies and which are not."
+
+        "Note": "Allows LLM to use web search and file search (searching the knowledge base) to obtain information."
+
+    }
+}

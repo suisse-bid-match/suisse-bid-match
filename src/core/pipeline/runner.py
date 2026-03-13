@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import dataclass, field as dataclass_field
+from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
 import sys
 import traceback
-from typing import Any
+from typing import Any, Callable
 
 from .config import load_pipeline_config
 from .contracts import (
@@ -26,6 +28,9 @@ from .matching import build_fallback_step7
 from .mysql_client import fetch_schema_metadata, parse_mysql_tsv, run_mysql_query
 from .openai_client import call_responses, extract_output_json, upload_file
 from .sql_builder import build_step4_merged, build_step5_sql
+
+
+LLM_PROGRESS_PREFIX = "LLM_PROGRESS::"
 
 
 PIPELINE_STEPS = [
@@ -135,7 +140,7 @@ def _build_step2_prompt(allowed_fields: list[str]) -> str:
         '      "quantity":null,\n'
         '      "requirements":[\n'
         "        {\n"
-        '          "field":"match_specs.xxx",\n'
+        '          "field":"vw_bid_specs.xxx",\n'
         '          "value":..., \n'
         '          "unit":null,\n'
         '          "source":{"file_name":"...","snippet":"..."},\n'
@@ -163,15 +168,15 @@ def _build_step7_prompt() -> str:
         '  "match_results":[\n'
         "    {\n"
         '      "product_key":"item_001",\n'
-        '      "ranked_candidates":[\n'
+        '      "candidates":[\n'
         "        {\n"
         '          "rank":1,\n'
         '          "db_product_id":123,\n'
         '          "db_product_name":"...",\n'
         '          "passes_hard":true,\n'
         '          "soft_match_score":0.0,\n'
-        '          "matched_soft_constraints":["match_specs.cri"],\n'
-        '          "unmet_soft_constraints":["match_specs.controls_dali"],\n'
+        '          "matched_soft_constraints":["vw_bid_specs.cri"],\n'
+        '          "unmet_soft_constraints":["vw_bid_specs.ugr"],\n'
         '          "explanation":"..."\n'
         "        }\n"
         "      ]\n"
@@ -218,6 +223,178 @@ def _write_not_run_steps(run_dir: Path, run_id: str, step_names: list[str], *, r
             uncertainties=[reason],
         )
         _write_step(run_dir, step_name, payload)
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _to_iso(dt: datetime | None) -> str | None:
+    if dt is None:
+        return None
+    return dt.isoformat().replace("+00:00", "Z")
+
+
+@dataclass
+class LLMExecutionTrace:
+    step_name: str
+    started_at: datetime | None = None
+    finished_at: datetime | None = None
+    response_received: bool = False
+    failure_message: str | None = None
+    fallback_used: bool = False
+    reasoning_text_parts: list[str] = dataclass_field(default_factory=list)
+    stream_event_counts: dict[str, int] = dataclass_field(default_factory=dict)
+    status_events: list[str] = dataclass_field(default_factory=list)
+
+    def record_status(self, status: str, *, message: str | None = None) -> None:
+        self.status_events.append(status)
+        if status == "llm_request_started" and self.started_at is None:
+            self.started_at = _utcnow()
+            return
+        if status == "llm_response_received":
+            self.response_received = True
+            if self.finished_at is None:
+                self.finished_at = _utcnow()
+            return
+        if status == "llm_request_failed":
+            if isinstance(message, str) and message.strip():
+                self.failure_message = message.strip()
+            if self.finished_at is None:
+                self.finished_at = _utcnow()
+
+    def record_stream_event(self, event: dict[str, Any]) -> None:
+        kind = str(event.get("kind") or "unknown")
+        self.stream_event_counts[kind] = self.stream_event_counts.get(kind, 0) + 1
+        if kind in {"reasoning_summary_delta", "reasoning_summary"}:
+            text = event.get("text")
+            if isinstance(text, str) and text:
+                self.reasoning_text_parts.append(text)
+
+    def mark_fallback_used(self) -> None:
+        self.fallback_used = True
+
+    def to_payload(self) -> dict[str, Any]:
+        if self.finished_at is None and (self.response_received or self.failure_message):
+            self.finished_at = _utcnow()
+        final_status = "failed" if self.failure_message else "succeeded"
+        duration_ms: int | None = None
+        if self.started_at is not None and self.finished_at is not None:
+            duration_ms = max(0, int((self.finished_at - self.started_at).total_seconds() * 1000))
+        reasoning_text = "".join(self.reasoning_text_parts).strip()
+        return {
+            "step_name": self.step_name,
+            "request_started_at": _to_iso(self.started_at),
+            "request_finished_at": _to_iso(self.finished_at),
+            "duration_ms": duration_ms,
+            "final_status": final_status,
+            "response_received": self.response_received,
+            "fallback_used": self.fallback_used,
+            "failure_message": self.failure_message,
+            "reasoning_summary": reasoning_text or None,
+            "reasoning_chars": len(reasoning_text),
+            "stream_event_counts": self.stream_event_counts,
+            "status_events": self.status_events,
+        }
+
+
+def _emit_llm_progress(run_id: str, step_name: str, payload: dict[str, Any]) -> None:
+    event = {"run_id": run_id, "step_name": step_name}
+    event.update(payload)
+    try:
+        encoded = json.dumps(event, ensure_ascii=False)
+    except Exception:
+        encoded = json.dumps(
+            {
+                "run_id": run_id,
+                "step_name": step_name,
+                "kind": "status",
+                "status": "serialize_failed",
+                "message": str(payload),
+            },
+            ensure_ascii=False,
+        )
+    print(f"{LLM_PROGRESS_PREFIX}{encoded}", flush=True)
+
+
+def _emit_llm_status(
+    run_id: str,
+    step_name: str,
+    trace: LLMExecutionTrace,
+    *,
+    status: str,
+    message: str | None = None,
+) -> None:
+    trace.record_status(status, message=message)
+    payload: dict[str, Any] = {"kind": "status", "status": status}
+    if message:
+        payload["message"] = message
+    _emit_llm_progress(run_id, step_name, payload)
+
+
+def _emit_llm_execution_summary(run_id: str, trace: LLMExecutionTrace) -> dict[str, Any]:
+    summary = trace.to_payload()
+    _emit_llm_progress(
+        run_id,
+        trace.step_name,
+        {
+            "kind": "execution_summary",
+            "summary": summary,
+        },
+    )
+    return summary
+
+
+def _build_llm_stream_notifier(
+    run_id: str,
+    step_name: str,
+    trace: LLMExecutionTrace,
+) -> tuple[Callable[[dict[str, Any]], None], Callable[[], None]]:
+    buffered_text = ""
+    buffered_event_type: str | None = None
+
+    def _flush() -> None:
+        nonlocal buffered_text, buffered_event_type
+        if not buffered_text:
+            return
+        _emit_llm_progress(
+            run_id,
+            step_name,
+            {
+                "kind": "reasoning_summary_delta",
+                "event_type": buffered_event_type or "response.reasoning_summary_text.delta",
+                "text": buffered_text,
+            },
+        )
+        trace.record_stream_event(
+            {
+                "kind": "reasoning_summary_delta",
+                "event_type": buffered_event_type or "response.reasoning_summary_text.delta",
+                "text": buffered_text,
+            }
+        )
+        buffered_text = ""
+        buffered_event_type = None
+
+    def _notify(event: dict[str, Any]) -> None:
+        nonlocal buffered_text, buffered_event_type
+        kind = event.get("kind")
+        if kind == "reasoning_summary_delta":
+            text = event.get("text")
+            if not isinstance(text, str) or not text:
+                return
+            buffered_text += text
+            current_event_type = event.get("event_type")
+            if isinstance(current_event_type, str) and current_event_type:
+                buffered_event_type = current_event_type
+            if len(buffered_text) >= 120 or "\n" in text:
+                _flush()
+            return
+        _flush()
+        trace.record_stream_event(event)
+        _emit_llm_progress(run_id, step_name, event)
+
+    return _notify, _flush
 
 
 def _envelope_error(step: str, run_id: str, code: str, message: str, details: dict | None = None) -> dict:
@@ -273,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
     db_user = os.getenv("PIM_MYSQL_USER", db_cfg["user"])
     db_password = os.getenv("PIM_MYSQL_PASSWORD", db_cfg["password"])
     db_name = os.getenv("PIM_MYSQL_DB", db_cfg["database"])
-    schema_tables = list(db_cfg.get("tables") or ["match_products", "match_specs"])
+    schema_tables = list(db_cfg.get("tables") or ["vw_bid_products", "vw_bid_specs"])
     schema_tables = [table.strip() for table in schema_tables if table.strip()]
     join_key = str(db_cfg.get("join_key") or "product_id").strip()
 
@@ -387,6 +564,8 @@ def main(argv: list[str] | None = None) -> int:
     allowed_tables = {table["name"] for table in schema_payload.get("tables", []) if isinstance(table, dict)}
 
     # STEP2
+    step2_trace = LLMExecutionTrace("step2_extract_requirements")
+    step2_stream_flush: Callable[[], None] = lambda: None
     try:
         tender_files = collect_files(tender_dir)
         if not tender_files:
@@ -409,6 +588,17 @@ def main(argv: list[str] | None = None) -> int:
             tools.append({"type": "web_search", "external_web_access": True})
             include.append("web_search_call.results")
 
+        stream_notify, step2_stream_flush = _build_llm_stream_notifier(
+            run_id,
+            "step2_extract_requirements",
+            step2_trace,
+        )
+        _emit_llm_status(
+            run_id,
+            "step2_extract_requirements",
+            step2_trace,
+            status="llm_request_started",
+        )
         response = call_responses(
             base_url,
             api_key,
@@ -419,6 +609,14 @@ def main(argv: list[str] | None = None) -> int:
             tools=tools or None,
             include=include or None,
             json_mode=True,
+            on_stream_event=stream_notify,
+        )
+        step2_stream_flush()
+        _emit_llm_status(
+            run_id,
+            "step2_extract_requirements",
+            step2_trace,
+            status="llm_response_received",
         )
         raw_step2 = extract_output_json(response)
         tender_products, llm_uncertainties = _normalize_step2_raw(raw_step2)
@@ -445,7 +643,11 @@ def main(argv: list[str] | None = None) -> int:
             llm_uncertainties.append(
                 f"Dropped {dropped_non_schema} Step2 requirements with non-schema fields."
             )
-        step2_data = {"schema_snapshot": schema_payload, "tender_products": tender_products}
+        step2_data = {
+            "schema_snapshot": schema_payload,
+            "tender_products": tender_products,
+            "llm_execution": _emit_llm_execution_summary(run_id, step2_trace),
+        }
         step2_data = validate_step2_data(step2_data)
 
         step2_payload = build_step_envelope(
@@ -457,6 +659,18 @@ def main(argv: list[str] | None = None) -> int:
         )
         _write_step(run_dir, "step2_extract_requirements", step2_payload)
     except Exception as exc:
+        try:
+            step2_stream_flush()
+        except Exception:
+            pass
+        _emit_llm_status(
+            run_id,
+            "step2_extract_requirements",
+            step2_trace,
+            status="llm_request_failed",
+            message=str(exc),
+        )
+        _emit_llm_execution_summary(run_id, step2_trace)
         payload = _envelope_error(
             "step2_extract_requirements",
             run_id,
@@ -621,6 +835,8 @@ def main(argv: list[str] | None = None) -> int:
 
     # STEP7 (LLM rank, fallback to deterministic)
     step7_uncertainties: list[str] = []
+    step7_trace = LLMExecutionTrace("step7_rank_candidates")
+    step7_stream_flush: Callable[[], None] = lambda: None
     try:
         try:
             tools: list[dict] = []
@@ -644,6 +860,17 @@ def main(argv: list[str] | None = None) -> int:
                 + "\n\nstep6_json:\n"
                 + json.dumps(step6_data, ensure_ascii=False)
             )
+            stream_notify, step7_stream_flush = _build_llm_stream_notifier(
+                run_id,
+                "step7_rank_candidates",
+                step7_trace,
+            )
+            _emit_llm_status(
+                run_id,
+                "step7_rank_candidates",
+                step7_trace,
+                status="llm_request_started",
+            )
             response = call_responses(
                 base_url,
                 api_key,
@@ -654,6 +881,14 @@ def main(argv: list[str] | None = None) -> int:
                 tools=tools or None,
                 include=include or None,
                 json_mode=True,
+                on_stream_event=stream_notify,
+            )
+            step7_stream_flush()
+            _emit_llm_status(
+                run_id,
+                "step7_rank_candidates",
+                step7_trace,
+                status="llm_response_received",
             )
             raw_step7 = extract_output_json(response)
             raw_unc = raw_step7.get("uncertainties")
@@ -663,12 +898,31 @@ def main(argv: list[str] | None = None) -> int:
                         step7_uncertainties.append(item.strip())
                     elif item is not None:
                         step7_uncertainties.append(str(item))
-            step7_data = validate_step7_data({"match_results": raw_step7.get("match_results", [])})
+            step7_data = validate_step7_data(
+                {
+                    "match_results": raw_step7.get("match_results", []),
+                    "llm_execution": _emit_llm_execution_summary(run_id, step7_trace),
+                }
+            )
         except Exception as exc:
+            try:
+                step7_stream_flush()
+            except Exception:
+                pass
+            _emit_llm_status(
+                run_id,
+                "step7_rank_candidates",
+                step7_trace,
+                status="llm_request_failed",
+                message=str(exc),
+            )
+            step7_trace.mark_fallback_used()
             step7_uncertainties.append(
                 f"Step7 LLM ranking failed and fallback ranking was used: {exc}"
             )
-            step7_data = validate_step7_data(build_fallback_step7(step4_data, step6_data))
+            fallback_payload = build_fallback_step7(step4_data, step6_data)
+            fallback_payload["llm_execution"] = _emit_llm_execution_summary(run_id, step7_trace)
+            step7_data = validate_step7_data(fallback_payload)
 
         step7_payload = build_step_envelope(
             step="step7_rank_candidates",

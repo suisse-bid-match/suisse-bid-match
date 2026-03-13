@@ -5,20 +5,20 @@ openai:
   enable_web_search: false
 
 kb:
-  source_dir: /home/daz/all_things_for_genai_hackathon/upload_corpus_kb
+  source_dir: src/prepare/upload_corpus_kb
   vector_store_name: lighting_kb
   kb_key: lighting_kb
   description: Swiss lighting tender knowledge base.
   max_num_results: 12
 
 db:
-  container: suisse-bid-match-pim-mysql-1
+  container: mysql
   user: root
   password: root
   database: pim_raw
   tables:
-    - match_products
-    - match_specs
+    - vw_bid_products
+    - vw_bid_specs
   join_key: product_id
 
 runtime:

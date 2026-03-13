@@ -1,0 +1,6 @@
+现在src/prepare中有upload_corpus_kb和pim.sql;
+upload_corpus_kb是core中第一步所需上传的知识库，你需要把它的路径更新到外面的pipeline.yaml，使用项目相对路径
+pim.sql是供应商公司的产品数据库重建sql脚本，你需要
+- 写一个脚本执行这个sql重建语句，重建供应商公司的mysql产品数据库；
+- 用一个docker来包装mysql，这个可以写到docker-compose.yml中，
+项目启动时，启动docker，然后执行sql脚本

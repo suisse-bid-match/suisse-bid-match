@@ -194,11 +194,29 @@ class Step2TenderProduct(BaseModel):
         return self
 
 
+class LLMExecutionSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    step_name: str = Field(min_length=1)
+    request_started_at: str | None = None
+    request_finished_at: str | None = None
+    duration_ms: int | None = Field(default=None, ge=0)
+    final_status: str = Field(pattern="^(succeeded|failed)$")
+    response_received: bool = False
+    fallback_used: bool = False
+    failure_message: str | None = None
+    reasoning_summary: str | None = None
+    reasoning_chars: int = Field(default=0, ge=0)
+    stream_event_counts: dict[str, int] = Field(default_factory=dict)
+    status_events: list[str] = Field(default_factory=list)
+
+
 class Step2Data(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_snapshot: SchemaPayload
     tender_products: list[Step2TenderProduct] = Field(default_factory=list)
+    llm_execution: LLMExecutionSummary | None = None
 
     @model_validator(mode="after")
     def _unique_product_keys(self):
@@ -377,13 +395,26 @@ class Step7MatchResult(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     product_key: str
-    ranked_candidates: list[RankedCandidate] = Field(default_factory=list)
+    candidates: list[RankedCandidate] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_candidate_key(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        if "candidates" not in normalized and "ranked_candidates" in normalized:
+            normalized["candidates"] = normalized.pop("ranked_candidates")
+        else:
+            normalized.pop("ranked_candidates", None)
+        return normalized
 
 
 class Step7Data(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     match_results: list[Step7MatchResult] = Field(default_factory=list)
+    llm_execution: LLMExecutionSummary | None = None
 
 
 class StepEnvelope(BaseModel):
@@ -487,4 +518,3 @@ def validation_error(prefix: str, exc: ValidationError) -> ValueError:
         msg = issue.get("msg", "validation error")
         details.append(f"{loc}: {msg}")
     return ValueError(f"{prefix}: {'; '.join(details)}")
-

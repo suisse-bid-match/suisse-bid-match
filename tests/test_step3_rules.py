@@ -16,7 +16,7 @@ class TestStep3Rules(unittest.TestCase):
         payload = {
             "field_rules": [
                 {
-                    "field": "match_specs.ugr",
+                    "field": "vw_bid_specs.ugr",
                     "operator": "lte",
                     "is_hard": True,
                     "operator_confidence": 0.9,
@@ -24,7 +24,7 @@ class TestStep3Rules(unittest.TestCase):
                     "rationale": "x",
                 },
                 {
-                    "field": "match_specs.ugr",
+                    "field": "vw_bid_specs.ugr",
                     "operator": "eq",
                     "is_hard": False,
                     "operator_confidence": 0.8,
@@ -40,7 +40,7 @@ class TestStep3Rules(unittest.TestCase):
         payload = {
             "field_rules": [
                 {
-                    "field": "match_specs.ugr",
+                    "field": "vw_bid_specs.ugr",
                     "operator": "approx",
                     "is_hard": True,
                     "operator_confidence": 0.9,
@@ -56,7 +56,7 @@ class TestStep3Rules(unittest.TestCase):
         payload = {
             "field_rules": [
                 {
-                    "field": "match_specs.unknown",
+                    "field": "vw_bid_specs.unknown",
                     "operator": "eq",
                     "is_hard": True,
                     "operator_confidence": 0.9,
@@ -66,9 +66,8 @@ class TestStep3Rules(unittest.TestCase):
             ]
         }
         with self.assertRaises(Exception):
-            validate_step3_data(payload, allowed_fields={"match_specs.ugr"})
+            validate_step3_data(payload, allowed_fields={"vw_bid_specs.ugr"})
 
 
 if __name__ == "__main__":
     unittest.main()
-

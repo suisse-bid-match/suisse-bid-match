@@ -18,9 +18,9 @@ class TestStep5SQL(unittest.TestCase):
                 {
                     "product_key": "item_001",
                     "requirements": [
-                        {"field": "match_specs.ugr", "operator": "lte", "value": 19, "is_hard": True},
-                        {"field": "match_specs.cri", "value": 80, "is_hard": True},  # no operator -> skip
-                        {"field": "match_specs.ip_rating", "operator": "gte", "value": 44, "is_hard": False},  # soft -> skip in where
+                        {"field": "vw_bid_specs.ugr", "operator": "lte", "value": 19, "is_hard": True},
+                        {"field": "vw_bid_specs.cri", "value": 80, "is_hard": True},  # no operator -> skip
+                        {"field": "vw_bid_specs.ip_rating", "operator": "gte", "value": 44, "is_hard": False},  # soft -> skip in where
                     ],
                 }
             ]
@@ -28,17 +28,18 @@ class TestStep5SQL(unittest.TestCase):
         schema = {
             "tables": [
                 {
-                    "name": "match_products",
+                    "name": "vw_bid_products",
                     "columns": [
                         {"name": "product_id", "type": "bigint"},
                         {"name": "product_name", "type": "text"},
                         {"name": "article_number", "type": "varchar"},
                         {"name": "manufacturer_name", "type": "varchar"},
+                        {"name": "tender_description", "type": "text"},
                         {"name": "is_current", "type": "tinyint"},
                     ],
                 },
                 {
-                    "name": "match_specs",
+                    "name": "vw_bid_specs",
                     "columns": [
                         {"name": "product_id", "type": "bigint"},
                         {"name": "ugr", "type": "double"},
@@ -52,11 +53,14 @@ class TestStep5SQL(unittest.TestCase):
         payload = build_step5_sql(step4_data, schema, join_key="product_id")
         self.assertEqual(len(payload["queries"]), 1)
         sql = payload["queries"][0]["sql"]
-        self.assertIn("ms.ugr <= 19", sql)
-        self.assertNotIn("ms.cri", sql.split("WHERE", 1)[1])  # no hard operator
-        self.assertNotIn("ms.ip_rating >= 44", sql)
+        self.assertIn("FROM vw_bid_products bp", sql)
+        self.assertIn("JOIN vw_bid_specs bs ON bp.product_id = bs.product_id", sql)
+        self.assertIn("bs.ugr IS NOT NULL", sql)
+        self.assertIn("bs.ugr <> 0", sql)
+        self.assertIn("bs.ugr <= 19", sql)
+        self.assertNotIn("bs.cri", sql.split("WHERE", 1)[1])  # no hard operator
+        self.assertNotIn("bs.ip_rating >= 44", sql)
 
 
 if __name__ == "__main__":
     unittest.main()
-

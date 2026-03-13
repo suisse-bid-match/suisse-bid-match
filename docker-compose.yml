@@ -1,0 +1,121 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: suisse-bid-match-mysql
+    command: ["mysqld", "--max_allowed_packet=512M"]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${PIM_MYSQL_DB:-pim_raw}
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  mysql-init:
+    image: mysql:8.4
+    container_name: suisse-bid-match-mysql-init
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      PIM_MYSQL_HOST: mysql
+      PIM_MYSQL_PORT: 3306
+      PIM_MYSQL_USER: root
+      PIM_MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      PIM_MYSQL_DB: ${PIM_MYSQL_DB:-pim_raw}
+      PIM_SQL_FILE: /prepare/pim.sql
+      PIM_CHECK_TABLE: ${PIM_CHECK_TABLE:-articles}
+      FORCE_REBUILD: ${FORCE_REBUILD:-0}
+    volumes:
+      - ./src/prepare:/prepare:ro
+      - ./scripts:/scripts:ro
+    entrypoint: ["sh", "/scripts/rebuild_pim_mysql.sh"]
+    restart: "no"
+
+  mysql-views-init:
+    image: mysql:8.4
+    container_name: suisse-bid-match-mysql-views-init
+    depends_on:
+      mysql:
+        condition: service_healthy
+      mysql-init:
+        condition: service_completed_successfully
+    environment:
+      PIM_MYSQL_HOST: mysql
+      PIM_MYSQL_PORT: 3306
+      PIM_MYSQL_USER: root
+      PIM_MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      PIM_MYSQL_DB: ${PIM_MYSQL_DB:-pim_raw}
+    volumes:
+      - ./scripts:/scripts:ro
+    entrypoint: ["sh", "/scripts/init_bid_views.sh"]
+    restart: "no"
+
+  postgres:
+    image: postgres:16
+    container_name: suisse-bid-match-postgres
+    environment:
+      POSTGRES_DB: suisse_bid_match
+      POSTGRES_USER: suisse
+      POSTGRES_PASSWORD: suisse
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U suisse -d suisse_bid_match"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: src/web/backend/Dockerfile
+    container_name: suisse-bid-match-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      mysql-init:
+        condition: service_completed_successfully
+      mysql-views-init:
+        condition: service_completed_successfully
+    environment:
+      DATABASE_URL: postgresql+psycopg://suisse:suisse@postgres:5432/suisse_bid_match
+      PIM_MYSQL_HOST: mysql
+      PIM_MYSQL_PORT: 3306
+      PIM_MYSQL_USER: root
+      PIM_MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      PIM_MYSQL_DB: ${PIM_MYSQL_DB:-pim_raw}
+      PIM_MYSQL_CONTAINER: mysql
+      PIM_SCHEMA_TABLES: vw_bid_products,vw_bid_specs
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5-mini}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      CORE_SKIP_KB_BOOTSTRAP: ${CORE_SKIP_KB_BOOTSTRAP:-false}
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+
+  frontend:
+    build:
+      context: .
+      dockerfile: src/web/frontend/Dockerfile
+    container_name: suisse-bid-match-frontend
+    depends_on:
+      - backend
+    command: ["sh", "-lc", "rm -rf /app/.next/* && npm run dev -- -H 0.0.0.0 -p 3000"]
+    environment:
+      NEXT_PUBLIC_API_BASE: http://localhost:8000/api/v1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src/web/frontend:/app
+      - /app/node_modules
+      - /app/.next

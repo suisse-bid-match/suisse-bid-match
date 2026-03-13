@@ -6,6 +6,9 @@ from typing import Any
 
 from .contracts import normalize_field
 
+PRODUCT_VIEW = "vw_bid_products"
+SPECS_VIEW = "vw_bid_specs"
+
 
 def _split_table_column(field: str) -> tuple[str, str] | None:
     if "." not in field:
@@ -19,10 +22,10 @@ def _split_table_column(field: str) -> tuple[str, str] | None:
 
 
 def _alias_for_table(table_name: str) -> str | None:
-    if table_name == "match_products":
-        return "mp"
-    if table_name == "match_specs":
-        return "ms"
+    if table_name == PRODUCT_VIEW:
+        return "bp"
+    if table_name == SPECS_VIEW:
+        return "bs"
     return None
 
 
@@ -48,13 +51,21 @@ def _sql_quote(value: str) -> str:
     return f"'{escaped}'"
 
 
+def _guard_unknown_numeric(ref: str, condition_sql: str) -> str:
+    return f"({ref} IS NOT NULL AND {ref} <> 0 AND {condition_sql})"
+
+
 def _build_numeric_condition(ref: str, operator: str, value: Any) -> str | None:
+    if operator in {"bool_true", "bool_false"}:
+        # V1 rule policy excludes bool operators.
+        return None
+
     if operator == "between":
         if isinstance(value, list) and len(value) == 2:
             low = _to_float(value[0])
             high = _to_float(value[1])
             if low is not None and high is not None:
-                return f"{ref} BETWEEN {low:g} AND {high:g}"
+                return _guard_unknown_numeric(ref, f"{ref} BETWEEN {low:g} AND {high:g}")
         return None
 
     if operator == "in":
@@ -63,10 +74,7 @@ def _build_numeric_condition(ref: str, operator: str, value: Any) -> str | None:
         nums = [num for num in (_to_float(x) for x in value) if num is not None]
         if not nums:
             return None
-        return f"{ref} IN ({', '.join(f'{num:g}' for num in nums)})"
-
-    if operator in {"bool_true", "bool_false"}:
-        return f"{ref} = {1 if operator == 'bool_true' else 0}"
+        return _guard_unknown_numeric(ref, f"{ref} IN ({', '.join(f'{num:g}' for num in nums)})")
 
     num = _to_float(value)
     if num is None:
@@ -75,7 +83,7 @@ def _build_numeric_condition(ref: str, operator: str, value: Any) -> str | None:
     sql_op = op_map.get(operator)
     if not sql_op:
         return None
-    return f"{ref} {sql_op} {num:g}"
+    return _guard_unknown_numeric(ref, f"{ref} {sql_op} {num:g}")
 
 
 def _build_text_condition(ref: str, operator: str, value: Any) -> str | None:
@@ -132,10 +140,16 @@ def _collect_select_exprs(requirements: list[dict], schema_columns: set[str]) ->
         seen.add(expr)
         selected.append(expr)
 
-    baseline = ("mp.product_id", "mp.article_number", "mp.product_name", "mp.manufacturer_name")
+    baseline = (
+        "bp.product_id",
+        "bp.article_number",
+        "bp.product_name",
+        "bp.manufacturer_name",
+        "bp.tender_description",
+    )
     for expr in baseline:
         table_alias, col = expr.split(".", 1)
-        table_name = "match_products" if table_alias == "mp" else ""
+        table_name = PRODUCT_VIEW if table_alias == "bp" else ""
         field = f"{table_name}.{col}"
         if field in schema_columns:
             add(expr)
@@ -151,9 +165,11 @@ def _collect_select_exprs(requirements: list[dict], schema_columns: set[str]) ->
             continue
         if field not in schema_columns:
             continue
+        if column_name in {"product_id", "is_current"}:
+            continue
         add(f"{alias}.{column_name}")
 
-    return selected or ["mp.product_id"]
+    return selected or ["bp.product_id"]
 
 
 def build_step4_merged(step2_data: dict, step3_data: dict) -> dict:
@@ -233,10 +249,10 @@ def build_step5_sql(step4_data: dict, schema_payload: dict, *, join_key: str = "
         select_exprs = _collect_select_exprs(requirements, schema_columns)
 
         where_clauses: list[str] = []
-        if "is_current" in table_map.get("match_products", set()):
-            where_clauses.append("mp.is_current = 1")
-        if "is_current" in table_map.get("match_specs", set()):
-            where_clauses.append("ms.is_current = 1")
+        if "is_current" in table_map.get(PRODUCT_VIEW, set()):
+            where_clauses.append("bp.is_current = 1")
+        if "is_current" in table_map.get(SPECS_VIEW, set()):
+            where_clauses.append("bs.is_current = 1")
 
         hard_constraints_used: list[dict] = []
         for requirement in requirements:
@@ -266,8 +282,8 @@ def build_step5_sql(step4_data: dict, schema_payload: dict, *, join_key: str = "
         sql = (
             "SELECT "
             + ", ".join(select_exprs)
-            + " FROM match_products mp "
-            + f"JOIN match_specs ms ON mp.{join_key} = ms.{join_key} "
+            + f" FROM {PRODUCT_VIEW} bp "
+            + f"JOIN {SPECS_VIEW} bs ON bp.{join_key} = bs.{join_key} "
             + "WHERE "
             + " AND ".join(f"({item})" for item in where_clauses)
             + ";"
@@ -282,4 +298,3 @@ def build_step5_sql(step4_data: dict, schema_payload: dict, *, join_key: str = "
         )
 
     return {"queries": queries}
-

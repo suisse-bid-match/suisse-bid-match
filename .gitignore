@@ -3,6 +3,11 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# Business logic
+src/prepare/pim.sql
+src/prepare/upload_corpus_kb/
+
+
 # C extensions
 *.so
 
@@ -207,12 +212,16 @@ marimo/_lsp/
 __marimo__/
 
 /data/postgres/
+/data/mysql/
+src/web/backend/data/
 
 # Next.js frontend
 src/apps/web/node_modules/
 src/apps/web/.next/
 frontend/node_modules/
 frontend/.next/
+src/web/frontend/node_modules/
+src/web/frontend/.next/
 
 # SwissTender Copilot runtime outputs
 runtime/
