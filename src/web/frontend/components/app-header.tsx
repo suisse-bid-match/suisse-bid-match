@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx } from "@/components/ui";
 import { getModelSettings, setModelSettings, type ModelSettingsResponse } from "@/lib/api";
+import TenderLogo from "../../../../assets/TenderLogo.jpeg";
 
 const NAV_ITEMS: Array<{ href: "/" | "/rules" | "/stats"; label: string; match: (pathname: string) => boolean }> = [
   { href: "/", label: "Task Console", match: (pathname: string) => pathname === "/" || pathname.startsWith("/jobs/") },
@@ -52,10 +54,21 @@ export function AppHeader() {
     <header className="app-header">
       <div className="page-wrap app-header-inner">
         <div className="app-brand">
-          <Link href="/" className="app-brand-title">
-            Suisse Bid Match
+          <Link href="/" className="app-brand-link" aria-label="Heidi Tender home">
+            <span className="app-brand-mark">
+              <Image
+                src={TenderLogo}
+                alt="Heidi Tender logo"
+                className="app-brand-logo"
+                priority
+                sizes="52px"
+              />
+            </span>
+            <span className="app-brand-copy">
+              <span className="app-brand-title">Heidi Tender</span>
+              <span className="app-brand-subtitle">{getPageHint(pathname)}</span>
+            </span>
           </Link>
-          <p className="app-brand-subtitle">{getPageHint(pathname)}</p>
         </div>
         <nav className="app-nav" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {

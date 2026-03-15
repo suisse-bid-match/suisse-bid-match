@@ -181,6 +181,11 @@ export default function JobDetailPage() {
   const [compactMode, setCompactMode] = useState(true);
 
   const lastSseErrorRef = useRef(0);
+  const currentJobStatusRef = useRef<JobResponse["status"] | null>(null);
+
+  useEffect(() => {
+    currentJobStatusRef.current = job?.status ?? null;
+  }, [job?.status]);
 
   const appendEvent = useCallback((event: Omit<JobEventItem, "createdAt" | "id"> & { createdAt?: string; id?: string }) => {
     const createdAt = event.createdAt ?? new Date().toISOString();
@@ -281,18 +286,22 @@ export default function JobDetailPage() {
       const raw = JSON.parse((event as MessageEvent).data) as EventPayload;
       const stepName = typeof raw.step_name === "string" ? raw.step_name : "unknown";
       const stepStatus = typeof raw.step_status === "string" ? raw.step_status : "unknown";
+      const updatedAt = typeof raw.updated_at === "string" ? raw.updated_at : null;
       const payload = asRecord(raw.data) ?? {};
       const execution = extractLlmExecutionFromStepPayload(payload);
 
-      setStepMap((prev) => ({
-        ...prev,
-        [stepName]: {
-          step_name: stepName,
-          step_status: stepStatus,
-          payload,
-          updated_at: new Date().toISOString()
-        }
-      }));
+      setStepMap((prev) => {
+        const previous = prev[stepName];
+        return {
+          ...prev,
+          [stepName]: {
+            step_name: stepName,
+            step_status: stepStatus,
+            payload,
+            updated_at: updatedAt ?? previous?.updated_at ?? null
+          }
+        };
+      });
       if (execution) {
         upsertLlmExecution(stepName, execution);
       }
@@ -315,12 +324,13 @@ export default function JobDetailPage() {
       const stepName = typeof raw.step_name === "string" ? raw.step_name : "llm";
       const kind = typeof raw.kind === "string" ? raw.kind : "status";
       const text = typeof raw.text === "string" ? raw.text : "";
+      const allowReasoningReplay = currentJobStatusRef.current === "running";
 
-      if (kind === "reasoning_summary_delta" && text) {
+      if (allowReasoningReplay && kind === "reasoning_summary_delta" && text) {
         appendLlmReasoning(stepName, text);
       }
 
-      if (kind === "reasoning_summary" && text) {
+      if (allowReasoningReplay && kind === "reasoning_summary" && text) {
         setLlmReasoning(stepName, text);
       }
 
@@ -349,7 +359,13 @@ export default function JobDetailPage() {
         message: "Job execution started",
         rawPayload: null
       });
-      setJob((prev) => (prev ? { ...prev, status: "running" } : prev));
+      setJob((prev) => {
+        if (!prev) return prev;
+        if (prev.status === "succeeded" || prev.status === "failed") {
+          return prev;
+        }
+        return { ...prev, status: "running" };
+      });
     });
 
     source.addEventListener("job_completed", (event) => {

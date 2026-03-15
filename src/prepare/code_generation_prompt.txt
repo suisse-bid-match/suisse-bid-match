@@ -4,3 +4,5 @@ The `src/prepare` folder contains `upload_corpus_kb` and `pim.sql`.
 - write a script to execute this SQL and rebuild the supplier's MySQL product database;
 - package MySQL with Docker and define it in `docker-compose.yml`.
 When the project starts, launch Docker first and then execute the SQL script.
+
+

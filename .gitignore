@@ -222,6 +222,9 @@ frontend/node_modules/
 frontend/.next/
 src/web/frontend/node_modules/
 src/web/frontend/.next/
+src/web/frontend/.next_*/
+src/web/frontend/.next_root_owned_backup*/
+src/web/frontend/.next_host_stale_*/
 
 # SwissTender Copilot runtime outputs
 runtime/

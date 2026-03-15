@@ -150,7 +150,7 @@ class JobExecutor:
                 step_status = str(payload.get("status") or "ok")
                 with SessionLocal() as db:
                     job_repo = JobRepository(db)
-                    job_repo.upsert_step(
+                    step_row = job_repo.upsert_step(
                         job_id=job_id,
                         step_name=step_name,
                         step_status=step_status,
@@ -159,7 +159,12 @@ class JobExecutor:
                     job_repo.append_event(
                         job_id=job_id,
                         event_type="step_update",
-                        payload={"step_name": step_name, "step_status": step_status, "data": payload},
+                        payload={
+                            "step_name": step_name,
+                            "step_status": step_status,
+                            "updated_at": step_row.updated_at.isoformat() if step_row.updated_at else None,
+                            "data": payload,
+                        },
                     )
 
             def _on_llm_progress(payload: dict[str, Any]) -> None:

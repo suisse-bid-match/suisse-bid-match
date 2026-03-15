@@ -1,4 +1,4 @@
-Focus on the `suisse-bid-match` folder. Do not modify core code for now. I need to build a full-stack web service on top of it.
+Focus on the `Heidi-Tender` folder. Do not modify core code for now. I need to build a full-stack web service on top of it.
 Frontend uses Next.js + Tailwind CSS + TypeScript. Backend uses FastAPI + Python. Database uses PostgreSQL.
 The frontend is responsible for UI display and interaction, while the backend handles business logic and database interaction.
 

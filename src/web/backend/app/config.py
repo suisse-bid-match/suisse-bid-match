@@ -13,7 +13,7 @@ from .core_bridge import repo_root_from_here
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    app_name: str = "Suisse Bid Match API"
+    app_name: str = "Heidi Tender API"
     api_prefix: str = "/api/v1"
     database_url: str = "postgresql+psycopg://suisse:suisse@postgres:5432/suisse_bid_match"
 

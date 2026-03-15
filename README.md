@@ -1,174 +1,145 @@
-# Suisse Bid Match
+<p align="center">
+  <img src="./assets/TenderLogo.jpeg" alt="Heidi Tender" width="460" />
+</p>
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
-[![Stack](https://img.shields.io/badge/stack-Next.js%20%7C%20FastAPI%20%7C%20PostgreSQL%20%7C%20MySQL-blue)](#architecture)
+<h1 align="center">Heidi Tender</h1>
 
-An end-to-end tender matching platform that turns unstructured lighting tender packs into ranked, explainable supplier product candidates.
+<p align="center">
+  <strong>AI-native tender intelligence for procurement teams that need faster decisions, tighter rigor, and explainable supplier matches.</strong>
+</p>
 
-**Why this matters:** procurement teams lose time in manual cross-checking. Suisse Bid Match creates a repeatable, auditable, and faster path from tender requirements to shortlist-ready product options.
+<p align="center">
+  <img src="https://img.shields.io/badge/Product-Tender%20Intelligence-0F172A?style=for-the-badge" alt="Product: Tender Intelligence" />
+  <img src="https://img.shields.io/badge/Engine-LLM%20%2B%20Rules%20%2B%20SQL-0F766E?style=for-the-badge" alt="Engine: LLM plus Rules plus SQL" />
+  <img src="https://img.shields.io/badge/Stack-Next.js%20%7C%20FastAPI%20%7C%20PostgreSQL%20%7C%20MySQL-C2410C?style=for-the-badge" alt="Stack: Next.js FastAPI PostgreSQL MySQL" />
+</p>
 
-## Who This Is For
+<p align="center">
+  Heidi Tender transforms dense tender packs into ranked, defensible product recommendations by combining document understanding, governed rules, SQL-backed filtering, and explainable AI scoring.
+</p>
 
-- Procurement engineering teams building bid automation workflows
-- Solution architects evaluating AI-assisted matching systems
-- Platform teams needing a governed LLM + SQL decision flow
+## Why Heidi Tender
 
-## Core Business Outcomes
+Procurement teams spend too much time buried in PDFs, spreadsheets, supplier data, and compliance checks. Heidi Tender brings that work into one auditable flow: extract what matters, apply hard constraints, rank the best candidates, and keep the reasoning visible from start to finish.
 
-- **Faster evaluation cycles:** automate extraction, filtering, and ranking across multi-step tender logic
-- **Higher consistency:** enforce hard/soft rule contracts instead of ad-hoc spreadsheet decisions
-- **Audit-friendly decisions:** preserve job timelines, step outputs, events, and rule version history
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <strong>Structured from messy inputs</strong><br />
+      Upload tender files, archives, and technical documents, then convert unstructured material into a consistent requirement pipeline.
+    </td>
+    <td width="33%" valign="top">
+      <strong>Governed matching logic</strong><br />
+      Blend LLM extraction, explicit business rules, and SQL execution against supplier catalog data instead of relying on vague keyword search.
+    </td>
+    <td width="33%" valign="top">
+      <strong>Explainable outcomes</strong><br />
+      Produce shortlist-ready candidates with traceable evidence, fit logic, and operational visibility for more confident bid decisions.
+    </td>
+  </tr>
+</table>
 
-## Product Differentiators
+## What The Platform Does
 
-- **Structured 7-step core pipeline** with explicit contracts between extraction, rule merge, SQL build/execute, and ranking
-- **Hard/soft constraint strategy** to balance strict filtering and candidate recall
-- **Rule Copilot with human approval** (generate preview first, publish only after manual review)
-- **Rule snapshot binding per job** so running jobs are stable even after later rule changes
-- **Realtime telemetry** via SSE event stream with polling fallback behavior on disconnect
+- Ingests tender packs and supporting files through a web workflow
+- Extracts requirements and procurement signals from unstructured documents
+- Applies field rules and hard-versus-soft constraint logic
+- Generates SQL from validated hard requirements and executes it on supplier product views
+- Ranks surviving candidates using soft constraints and model-assisted reasoning
+- Streams job progress, step status, and system events in real time
 
-### What’s Possible Next
+## Core Product Highlights
 
-Suisse Bid Match is already production-minded, and is well positioned to evolve toward:
-
-- role-based access and multi-tenant governance
-- advanced analytics and SLA monitoring dashboards
-- deeper model orchestration and domain-specific evaluation harnesses
-- enterprise integration connectors (ERP/procurement suites)
+- **7-step pipeline with explicit contracts** across extraction, merge, SQL generation, execution, and ranking
+- **Rule Copilot with human approval** so generated rule drafts can be reviewed before publication
+- **Snapshot-based rule binding** to keep running jobs stable even when rules evolve later
+- **Realtime telemetry** through SSE events with polling-friendly frontend behavior
+- **Docker-first deployment** with app services, MySQL catalog bootstrap, and knowledge-base initialization
 
 ## Architecture
 
 ```mermaid
 flowchart LR
-  U[User] --> FE[Next.js Frontend\nTask Console / Rules / Stats]
+  U[User] --> FE[Next.js Frontend\nJobs / Rules / Stats]
   FE -->|REST + SSE| BE[FastAPI Backend]
 
-  BE --> PG[(PostgreSQL\nJobs / Steps / Events / Rule Versions / App Settings)]
-  BE --> CORE[Core Pipeline Runtime\n7-step flow]
+  BE --> PG[(PostgreSQL\nJobs / Steps / Events / Rule Versions / Settings)]
+  BE --> CORE[Core Pipeline Runtime\n7-step matching flow]
 
   CORE --> MYSQL[(MySQL Supplier Product DB\nvia vw_bid_products + vw_bid_specs)]
-  INIT1[mysql-init\nimport pim.sql once] --> MYSQL
-  INIT2[mysql-views-init\ncreate/update views] --> MYSQL
+  INIT1[mysql-init\nimport pim.sql] --> MYSQL
+  INIT2[mysql-views-init\ncreate and refresh views] --> MYSQL
 
-  CORE --> KB[src/prepare/upload_corpus_kb\nVector Store Bootstrap]
+  CORE --> KB[src/prepare/upload_corpus_kb\nKnowledge Base Bootstrap]
 ```
 
-### Runtime Split
+## How Matching Works
 
-- **MySQL** stores supplier product catalog data used by core SQL matching steps.
-- **PostgreSQL** stores application metadata for the web service (`jobs`, `job_steps`, `job_events`, `rule_versions`, `app_settings`).
-
-## Execution Model
-
-### Job lifecycle
-
-`created -> uploading -> ready -> running -> succeeded | failed`
-
-### Core step flow (conceptual)
-
-1. KB bootstrap / vector store check
+1. Knowledge-base bootstrap and vector store readiness check
 2. Requirement extraction from tender files
 3. External field rule determination
-4. Requirement + hardness merge
+4. Requirement merge with hardness classification
 5. SQL generation from hard constraints
-6. SQL execution on supplier DB views
-7. Candidate ranking by soft constraints
+6. SQL execution against supplier product views
+7. Candidate ranking using soft constraints
 
-### Realtime monitoring
+## Stack
 
-- `GET /api/v1/jobs/{job_id}/events` provides SSE event streaming
-- Uses incremental event IDs and supports reconnect with `Last-Event-ID`
-- Heartbeat is emitted when idle; frontend can fall back to polling
+- `Next.js` frontend for job orchestration, rule management, and monitoring
+- `FastAPI` backend for APIs, execution control, and streaming events
+- `PostgreSQL` for application state and versioned rule metadata
+- `MySQL` for supplier product data and SQL-backed candidate filtering
+- OpenAI models for extraction, reasoning, and ranking stages
 
-## Quickstart (Docker-first)
+## Quickstart
 
 ### Prerequisites
 
-- Docker + Docker Compose v2
+- Docker and Docker Compose v2
 - OpenAI API key
 
-### 1) Configure environment
+### Configure
 
-Edit `.env` at repo root and set at least:
+Create a root `.env` file with at least:
 
-- `OPENAI_API_KEY`
-- optional: `OPENAI_MODEL` (`gpt-5-mini` or `gpt-5.4`)
+```bash
+OPENAI_API_KEY=your_key_here
+OPENAI_MODEL=gpt-5-mini
+```
 
-> Security: never commit real API keys or production credentials.
-
-### 2) Start the platform
+### Run
 
 ```bash
 docker compose up --build
 ```
 
-### 3) Service endpoints
+### Endpoints
 
 - Frontend: `http://localhost:3000`
 - Backend API: `http://localhost:8000/api/v1`
 - Health check: `http://localhost:8000/health`
 
-### Startup sequence
+## Startup Sequence
 
-1. `mysql` starts
-2. `mysql-init` imports `src/prepare/pim.sql` if target tables are missing
-3. `mysql-views-init` creates/refreshes `vw_bid_products` and `vw_bid_specs`
-4. `backend` starts after DB dependencies are ready
-5. `frontend` starts
+1. `mysql` starts and prepares the supplier product database
+2. `mysql-init` imports `src/prepare/pim.sql` when initialization is needed
+3. `mysql-views-init` creates or refreshes `vw_bid_products` and `vw_bid_specs`
+4. `backend` starts after data services are ready
+5. `frontend` starts and connects to the API
 
-## First-Run Validation Checklist
+## Operating Model
 
-- Health check:
+### Job lifecycle
 
-```bash
-curl -s http://localhost:8000/health
-```
+`created -> uploading -> ready -> running -> succeeded | failed`
 
-- Model settings available:
+### Realtime monitoring
 
-```bash
-curl -s http://localhost:8000/api/v1/settings/model
-```
+- `GET /api/v1/jobs/{job_id}/events` streams step and lifecycle events over SSE
+- Incremental event IDs support reconnect flows via `Last-Event-ID`
+- Frontend behavior tolerates disconnects and can fall back to polling
 
-- UI reachable:
-  - open `http://localhost:3000`
-  - create a job
-  - upload one PDF/DOCX/XLSX file or ZIP
-  - start job and verify step/event updates in job detail page
-
-## Configuration Reference
-
-### OpenAI
-
-| Variable | Purpose | Default |
-|---|---|---|
-| `OPENAI_API_KEY` | API key for step2/step7 + rules copilot | empty |
-| `OPENAI_MODEL` | Default model snapshot at startup | `gpt-5-mini` |
-| `OPENAI_BASE_URL` | OpenAI-compatible endpoint | `https://api.openai.com/v1` |
-
-### MySQL (supplier product source)
-
-| Variable | Purpose | Default |
-|---|---|---|
-| `MYSQL_ROOT_PASSWORD` | MySQL root password (compose) | `root` |
-| `PIM_MYSQL_HOST` | MySQL host for backend/core | `mysql` in compose |
-| `PIM_MYSQL_PORT` | MySQL port | `3306` |
-| `PIM_MYSQL_USER` | MySQL user | `root` |
-| `PIM_MYSQL_PASSWORD` | MySQL password | `root` |
-| `PIM_MYSQL_DB` | Supplier DB name | `pim_raw` |
-| `PIM_SCHEMA_TABLES` | Schema source tables/views | `vw_bid_products,vw_bid_specs` |
-| `PIM_CHECK_TABLE` | Init check table for import script | `articles` |
-| `FORCE_REBUILD` | Force drop/reimport on mysql-init | `0` |
-
-### App runtime / frontend wiring
-
-| Variable | Purpose | Default |
-|---|---|---|
-| `DATABASE_URL` | PostgreSQL connection string (backend) | `postgresql+psycopg://suisse:suisse@postgres:5432/suisse_bid_match` |
-| `CORE_SKIP_KB_BOOTSTRAP` | Skip step1 KB bootstrap for faster local runs | `false` |
-| `NEXT_PUBLIC_API_BASE` | Frontend API base URL | `http://localhost:8000/api/v1` |
-
-## API Capability Map
+## API Surface
 
 ### Jobs
 
@@ -180,56 +151,20 @@ curl -s http://localhost:8000/api/v1/settings/model
 - `GET /api/v1/jobs/{job_id}`
 - `GET /api/v1/jobs/{job_id}/result`
 
-### Events (SSE)
-
-- `GET /api/v1/jobs/{job_id}/events`
-- Event types include job lifecycle updates, step updates, and LLM progress signals
-
 ### Rules
 
 - `GET /api/v1/rules/current`
 - `GET /api/v1/rules/versions`
 - `POST /api/v1/rules/draft`
-- `POST /api/v1/rules/generate` (compat path)
-- `POST /api/v1/rules/generate/stream` (copilot preview stream)
+- `POST /api/v1/rules/generate`
+- `POST /api/v1/rules/generate/stream`
 - `POST /api/v1/rules/{version_id}/publish`
 
-### Model settings
+### Settings and stats
 
 - `GET /api/v1/settings/model`
 - `PUT /api/v1/settings/model`
-
-### Statistics
-
 - `GET /api/v1/stats/dashboard`
-
-## Operational Notes
-
-### MySQL import idempotency + force rebuild
-
-Default behavior: import runs only when initialization checks indicate data is missing.
-
-Force a full rebuild:
-
-```bash
-docker compose run --rm -e FORCE_REBUILD=1 mysql-init
-```
-
-### `.next` permission issue in local frontend runs
-
-If you encounter `EACCES` errors around `.next` artifacts (often after container/user mismatch):
-
-```bash
-rm -rf src/web/frontend/.next
-# if ownership is wrong, fix ownership first
-# sudo chown -R "$USER":"$USER" src/web/frontend/.next
-```
-
-### Common troubleshooting
-
-- **OpenAI key missing (422 on start/generate):** set `OPENAI_API_KEY` and restart backend
-- **MySQL not ready / schema mismatch:** check `mysql-init` and `mysql-views-init` container logs
-- **Upload rejected:** validate file type/size constraints (PDF/DOCX/XLSX or ZIP containing supported files)
 
 ## Local Development
 
@@ -257,10 +192,9 @@ npm run dev
 python3 -m pytest tests src/web/backend/tests
 ```
 
-## Contributing Direction
+## Notes
 
-Contributions are welcome, especially around reliability, explainability, and operator UX. Prefer small, test-backed changes that preserve step contracts and keep API behavior stable.
+- This project currently focuses on Swiss tender workflows and lighting product matching
+- The platform is independent and not affiliated with `simap.ch`
 
-## License
-
-MIT License. See [LICENSE](./LICENSE).
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)

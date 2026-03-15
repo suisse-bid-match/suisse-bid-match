@@ -1,7 +1,7 @@
 services:
   mysql:
     image: mysql:8.4
-    container_name: suisse-bid-match-mysql
+    container_name: heidi-tender-mysql
     command: ["mysqld", "--max_allowed_packet=512M"]
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
@@ -16,7 +16,7 @@ services:
 
   mysql-init:
     image: mysql:8.4
-    container_name: suisse-bid-match-mysql-init
+    container_name: heidi-tender-mysql-init
     depends_on:
       mysql:
         condition: service_healthy
@@ -37,7 +37,7 @@ services:
 
   mysql-views-init:
     image: mysql:8.4
-    container_name: suisse-bid-match-mysql-views-init
+    container_name: heidi-tender-mysql-views-init
     depends_on:
       mysql:
         condition: service_healthy
@@ -56,7 +56,7 @@ services:
 
   postgres:
     image: postgres:16
-    container_name: suisse-bid-match-postgres
+    container_name: heidi-tender-postgres
     environment:
       POSTGRES_DB: suisse_bid_match
       POSTGRES_USER: suisse
@@ -75,7 +75,7 @@ services:
     build:
       context: .
       dockerfile: src/web/backend/Dockerfile
-    container_name: suisse-bid-match-backend
+    container_name: heidi-tender-backend
     depends_on:
       postgres:
         condition: service_healthy
@@ -107,15 +107,16 @@ services:
     build:
       context: .
       dockerfile: src/web/frontend/Dockerfile
-    container_name: suisse-bid-match-frontend
+    container_name: heidi-tender-web
     depends_on:
       - backend
-    command: ["sh", "-lc", "rm -rf /app/.next/* && npm run dev -- -H 0.0.0.0 -p 3000"]
+    command: ["sh", "-lc", "rm -rf .next/* && npm run dev -- -H 0.0.0.0 -p 3000"]
     environment:
       NEXT_PUBLIC_API_BASE: http://localhost:8000/api/v1
     ports:
       - "3000:3000"
     volumes:
-      - ./src/web/frontend:/app
-      - /app/node_modules
-      - /app/.next
+      - ./src/web/frontend:/app/src/web/frontend
+      - ./assets:/app/assets:ro
+      - /app/src/web/frontend/node_modules
+      - /app/src/web/frontend/.next
